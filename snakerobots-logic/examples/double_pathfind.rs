@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Mutex, thread::sleep, time::Duration, vec}
 
 use rand::RngExt;
 use snakerobots_logic::{
-    Direction, Game, GameState, Player, Point, Robot, RobotContext, Size, Snake,
+    Direction, Game, GameState, Grid, GridCell, Player, Point, Robot, RobotContext, Size, Snake
 };
 
 #[derive(Clone)]
@@ -103,6 +103,10 @@ impl ExampleRobot {
                 highest_evolution_path = path.clone();
             }
 
+            if path.evolution > 50 {
+                continue;
+            }
+
             for new_path in path.advance_all(&ctx) {
                 paths.insert(0, new_path);
             }
@@ -115,12 +119,9 @@ impl ExampleRobot {
 impl Robot for ExampleRobot {
     fn step(&self, ctx: RobotContext) -> Direction {
         let mut last = self.last.lock().unwrap();
-
         let path = self.find_path(Path::new(ctx.snake.clone()), &ctx, true);
-        let dir = path.dir.unwrap_or(*last);
-
-        *last = dir;
-        dir
+        *last = path.dir.unwrap_or(*last);
+        *last
     }
 }
 
@@ -130,35 +131,63 @@ fn build_player(x: i32, y: i32, dir: Direction) -> Player {
     Player::new(snake, Box::new(ExampleRobot::new(dir)))
 }
 
-fn main() {
-    loop {
-        let seed = rand::rng().random::<[u8; 16]>();
+fn fmt_cell(space: &GridCell) -> String {
+    match space {
+        GridCell::Empty => String::from("  "),
+        GridCell::Apple => String::from("\x1B[30;41m  \x1B[0m"),
+        GridCell::Snake(i) => format!("\x1B[30;{0}m  \x1B[0m", 42 + i),
+    }
+}
 
-        println!("Seed: {:x?}", seed);
+fn print_grid(grid: &Grid, clear: bool) {
+    let Size { width, height } = grid.size();
+    let mut output = String::new();
 
-        let width = 25;
-        let height = 13;
-        let mut game = Game::new(
-            Size::new(width, height),
-            2,
-            seed,
-            vec![
-                build_player(2, 2, Direction::Right),
-                build_player(width - 3, 2, Direction::Left),
-                build_player(2, height - 3, Direction::Right),
-                build_player(width - 3, height - 3, Direction::Left),
-                build_player(width / 2, height - 3, Direction::Up),
-                build_player(width / 2, 2, Direction::Down),
-            ],
+    if clear {
+        output += &format!("\x1B[{}F", height + 2);
+    }
+
+    output += &format!("+{}+\n", "--".repeat(width as usize));
+    for y in 0..height {
+        output += &format!(
+            "|{}|\n",
+            (0..width)
+                .filter_map(|x| grid.get(&Point::new(x, y)))
+                .map(|c| fmt_cell(c))
+                .collect::<String>()
         );
+    }
+    output += &format!("+{}+\n", "--".repeat(width as usize));
+    print!("{}", output);
+}
 
-        game.print(false);
-        while game.state() == GameState::Active {
-            sleep(Duration::from_millis(50));
-            game.step();
-            game.print(true);
-        }
+fn main() {
+    let seed = rand::rng().random::<[u8; 16]>();
 
-        sleep(Duration::from_secs(2));
+    println!("Seed: {:x?}", seed);
+
+    let width = 25;
+    let height = 13;
+    let mut game = Game::new(
+        Size::new(width, height),
+        2,
+        seed,
+        vec![
+            build_player(2, 2, Direction::Right),
+            build_player(width - 3, 2, Direction::Left),
+            build_player(2, height - 3, Direction::Right),
+            build_player(width - 3, height - 3, Direction::Left),
+            build_player(width / 2, height - 3, Direction::Up),
+            build_player(width / 2, 2, Direction::Down),
+        ],
+    ).expect("invalid game layout");
+
+    print_grid(game.grid(), false);
+
+    while game.state() == GameState::Active {
+        sleep(Duration::from_millis(50));
+        game.step();
+
+        print_grid(game.grid(), true);
     }
 }

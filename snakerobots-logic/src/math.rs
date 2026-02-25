@@ -26,8 +26,16 @@ impl Size {
         Self { width, height }
     }
 
+    pub fn area(&self) -> i32 {
+        self.width * self.height
+    }
+
     pub fn contains(&self, p: &Point) -> bool {
         p.x >= 0 && p.y >= 0 && p.x < self.width && p.y < self.height
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = Point> {
+        (0..self.height).flat_map(|y| (0..self.width).map(move |x| Point::new(x, y)))
     }
 }
 
