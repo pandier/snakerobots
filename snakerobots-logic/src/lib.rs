@@ -1,58 +1,12 @@
+pub mod math;
+pub mod robot;
+
 use std::{collections::HashSet, fmt::Debug};
 
-use rand::RngExt;
+use rand::{RngExt, SeedableRng, rngs::Xoshiro128PlusPlus};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Point {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl Point {
-    pub fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
-    }
-
-    pub fn direction(mut self, dir: Direction) -> Self {
-        dir.apply(&mut self);
-        self
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl Direction {
-    pub const ALL: [Direction; 4] = [
-        Direction::Up,
-        Direction::Down,
-        Direction::Left,
-        Direction::Right,
-    ];
-
-    pub fn opposite(&self) -> Direction {
-        match self {
-            Direction::Up => Direction::Down,
-            Direction::Down => Direction::Up,
-            Direction::Right => Direction::Left,
-            Direction::Left => Direction::Right,
-        }
-    }
-
-    pub fn apply(&self, vec: &mut Point) {
-        match self {
-            Direction::Up => vec.y -= 1,
-            Direction::Down => vec.y += 1,
-            Direction::Left => vec.x -= 1,
-            Direction::Right => vec.x += 1,
-        }
-    }
-}
+pub use math::{Direction, Point, Size};
+pub use robot::{Robot, RobotContext};
 
 #[derive(Debug, Clone)]
 pub struct Snake(Vec<Point>);
@@ -110,18 +64,6 @@ impl Snake {
     }
 }
 
-pub trait Robot {
-    fn step(&self, ctx: RobotContext) -> Direction;
-}
-
-pub struct RobotContext {
-    pub width: i32,
-    pub height: i32,
-    pub snake: Snake,
-    pub opponents: Vec<Snake>,
-    pub apples: HashSet<Point>,
-}
-
 pub struct Player {
     snake: Option<Snake>,
     robot: Box<dyn Robot>,
@@ -137,10 +79,10 @@ impl Player {
 }
 
 pub struct Game {
-    width: i32,
-    height: i32,
+    size: Size,
     players: Vec<Player>,
     apples: HashSet<Point>,
+    rng: Xoshiro128PlusPlus,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,12 +93,12 @@ pub enum GameState {
 }
 
 impl Game {
-    pub fn new(width: i32, height: i32, apple_count: usize, players: Vec<Player>) -> Self {
+    pub fn new(size: Size, apple_count: usize, seed: [u8; 16], players: Vec<Player>) -> Self {
         let mut game = Self {
-            width,
-            height,
+            size,
             players,
             apples: HashSet::new(),
+            rng: Xoshiro128PlusPlus::from_seed(seed),
         };
         for _ in 0..apple_count {
             game.place_random_apple();
@@ -172,7 +114,8 @@ impl Game {
     }
 
     fn iter_points(&self) -> impl Iterator<Item = Point> {
-        (0..self.height).flat_map(|y| (0..self.width).map(move |x| Point::new(x, y)))
+        (0..self.size.height)
+            .flat_map(|y| (0..self.size.width).map(move |x| Point::new(x as i32, y as i32)))
     }
 
     fn place_random_apple(&mut self) {
@@ -184,7 +127,7 @@ impl Game {
             })
             .collect::<Vec<_>>();
         if !points.is_empty() {
-            let point = points[rand::rng().random_range(..points.len())];
+            let point = points[self.rng.random_range(..points.len())];
             self.apples.insert(point);
         }
     }
@@ -194,8 +137,7 @@ impl Game {
             .iter_snakes()
             .map(|(i, player, snake)| {
                 let ctx = RobotContext {
-                    width: self.width,
-                    height: self.height,
+                    size: self.size,
                     snake: snake.clone(),
                     opponents: self
                         .iter_snakes()
@@ -221,11 +163,7 @@ impl Game {
             let new_head = snake.head().direction(dir);
 
             // TODO: is_in_bounds function
-            if new_head.x >= 0
-                && new_head.y >= 0
-                && new_head.x < self.width
-                && new_head.y < self.height
-            {
+            if self.size.contains(&new_head) {
                 let grow = self.apples.remove(&new_head);
                 if grow {
                     eaten_apples += 1;
@@ -273,8 +211,11 @@ impl Game {
     }
 
     pub fn print(&self, clear: bool) {
+        let width = self.size.width;
+        let height = self.size.height;
+
         let mut grid = Vec::new();
-        for _ in 0..(self.width * self.height) {
+        for _ in 0..(width * height) {
             grid.push(String::from("  "));
         }
 
@@ -286,32 +227,32 @@ impl Game {
             let tile = format!("\x1B[30;{0}m  \x1B[0m", 42 + i);
 
             for point in snake.points() {
-                grid[(point.x + point.y * self.width) as usize] = tile.clone();
+                grid[(point.x + point.y * width as i32) as usize] = tile.clone();
             }
         }
 
         for apple in &self.apples {
-            grid[(apple.x + apple.y * self.width) as usize] = "\x1B[30;41m  \x1B[0m".into();
+            grid[(apple.x + apple.y * width as i32) as usize] = "\x1B[30;41m  \x1B[0m".into();
         }
 
         let mut output = String::new();
 
         if clear {
-            output += &format!("\x1B[{}F", self.height + 2);
+            output += &format!("\x1B[{}F", height + 2);
         }
 
-        output += &format!("+{}+\n", "--".repeat(self.width as usize));
-        for y in 0..self.height {
-            let i = (y * self.width) as usize;
+        output += &format!("+{}+\n", "--".repeat(width as usize));
+        for y in 0..height {
+            let i = (y * width) as usize;
             output += &format!(
                 "|{}|\n",
-                grid[i..(i + self.width as usize)]
+                grid[i..(i + width as usize)]
                     .iter()
                     .map(|x| x.as_str())
                     .collect::<String>()
             );
         }
-        output += &format!("+{}+\n", "--".repeat(self.width as usize));
+        output += &format!("+{}+\n", "--".repeat(width as usize));
         print!("{}", output);
     }
 }

@@ -1,6 +1,9 @@
 use std::{collections::HashSet, sync::Mutex, thread::sleep, time::Duration, vec};
 
-use snakerobots_logic::{Direction, Game, GameState, Player, Point, Robot, RobotContext, Snake};
+use rand::RngExt;
+use snakerobots_logic::{
+    Direction, Game, GameState, Player, Point, Robot, RobotContext, Size, Snake,
+};
 
 #[derive(Clone)]
 pub struct Path {
@@ -11,11 +14,17 @@ pub struct Path {
 
 impl Path {
     pub fn new(snake: Snake) -> Self {
-        Self { dir: None, snake, evolution: 0 }
+        Self {
+            dir: None,
+            snake,
+            evolution: 0,
+        }
     }
 
     pub fn advance_all(&mut self, ctx: &RobotContext) -> impl Iterator<Item = Self> {
-        Direction::ALL.iter().filter_map(|dir| self.advance(*dir, ctx))
+        Direction::ALL
+            .iter()
+            .filter_map(|dir| self.advance(*dir, ctx))
     }
 
     pub fn advance(&mut self, dir: Direction, ctx: &RobotContext) -> Option<Self> {
@@ -36,8 +45,8 @@ impl Path {
     fn is_safe(&self, p: Point, ctx: &RobotContext) -> bool {
         p.x >= 0
             && p.y >= 0
-            && p.x < ctx.width
-            && p.y < ctx.height
+            && p.x < (ctx.size.width as i32)
+            && p.y < (ctx.size.height as i32)
             && !self.snake.contains(p)
             && ctx
                 .opponents
@@ -84,7 +93,7 @@ impl ExampleRobot {
             if apple && ctx.apples.contains(&path.snake.head()) {
                 let evolution = path.evolution;
                 let final_path = self.find_path(path.clone(), ctx, false);
-                if final_path.evolution - evolution > 15 {
+                if final_path.evolution - evolution > 5 {
                     return final_path;
                 }
             }
@@ -101,7 +110,6 @@ impl ExampleRobot {
 
         highest_evolution_path
     }
-
 }
 
 impl Robot for ExampleRobot {
@@ -123,27 +131,34 @@ fn build_player(x: i32, y: i32, dir: Direction) -> Player {
 }
 
 fn main() {
-    let width = 25;
-    let height = 13;
-    let mut game = Game::new(
-        width,
-        height,
-        2,
-        vec![
-            build_player(2, 2, Direction::Right),
-            build_player(width - 3, 2, Direction::Left),
-            build_player(2, height - 3, Direction::Right),
-            build_player(width - 3, height - 3, Direction::Left),
-            build_player(width / 2, height - 3, Direction::Up),
-            build_player(width / 2, 2, Direction::Down),
-        ],
-    );
+    loop {
+        let seed = rand::rng().random::<[u8; 16]>();
 
-    game.print(false);
-    while game.state() == GameState::Active {
-        sleep(Duration::from_millis(50));
-        game.step();
-        game.print(true);
+        println!("Seed: {:x?}", seed);
+
+        let width = 25;
+        let height = 13;
+        let mut game = Game::new(
+            Size::new(width, height),
+            2,
+            seed,
+            vec![
+                build_player(2, 2, Direction::Right),
+                build_player(width - 3, 2, Direction::Left),
+                build_player(2, height - 3, Direction::Right),
+                build_player(width - 3, height - 3, Direction::Left),
+                build_player(width / 2, height - 3, Direction::Up),
+                build_player(width / 2, 2, Direction::Down),
+            ],
+        );
+
+        game.print(false);
+        while game.state() == GameState::Active {
+            sleep(Duration::from_millis(50));
+            game.step();
+            game.print(true);
+        }
+
+        sleep(Duration::from_secs(2));
     }
 }
-

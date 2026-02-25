@@ -1,6 +1,9 @@
 use std::{collections::HashSet, sync::Mutex, thread::sleep, time::Duration, vec};
 
-use snakerobots_logic::{Direction, Game, GameState, Player, Point, Robot, RobotContext, Snake};
+use rand::RngExt;
+use snakerobots_logic::{
+    Direction, Game, GameState, Player, Point, Robot, RobotContext, Size, Snake,
+};
 
 pub struct ExampleRobot {
     last: Mutex<Direction>,
@@ -21,8 +24,8 @@ impl ExampleRobot {
     fn is_safe(p: Point, ctx: &RobotContext) -> bool {
         p.x >= 0
             && p.y >= 0
-            && p.x < ctx.width
-            && p.y < ctx.height
+            && p.x < ctx.size.width
+            && p.y < ctx.size.height
             && !ctx.snake.contains(p)
             && ctx
                 .opponents
@@ -89,12 +92,16 @@ fn build_player(x: i32, y: i32, dir: Direction) -> Player {
 }
 
 fn main() {
+    let seed = rand::rng().random::<[u8; 16]>();
+
+    println!("Seed: {:x?}", seed);
+
     let width = 17;
     let height = 9;
     let mut game = Game::new(
-        width,
-        height,
+        Size::new(width, height),
         2,
+        seed,
         vec![
             build_player(2, 2, Direction::Right),
             build_player(width - 3, 2, Direction::Left),
