@@ -1,3 +1,6 @@
+#[cfg(feature = "robot-impls")]
+pub mod impls;
+
 use std::collections::HashSet;
 
 use crate::{Direction, Point, Size, Snake};

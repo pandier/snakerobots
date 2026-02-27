@@ -1,0 +1,14 @@
+[package]
+name = "snakerobots-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+snakerobots-logic = { path = "../snakerobots-logic" }
+snakerobots-dto = { path = "../snakerobots-dto" }
+tokio = { version = "1.49", features = ["full"] }
+axum = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+
+rand = "0.10"
+eyre = "0.6"
