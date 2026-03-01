@@ -1,3 +1,5 @@
+mod users;
+
 use std::sync::Arc;
 
 use axum::{Json, Router, routing::post};
@@ -7,7 +9,10 @@ use snakerobots_dto::GameDto;
 use crate::{runner::run_game, state::AppState};
 
 pub fn router(state: Arc<AppState>) -> Router {
-    Router::new().route("/run", post(run)).with_state(state)
+    Router::new()
+        .route("/run", post(run))
+        .nest("/users", users::router())
+        .with_state(state)
 }
 
 #[derive(Debug, Serialize)]

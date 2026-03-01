@@ -1,17 +1,15 @@
-pub mod routes;
+pub mod http;
 pub mod runner;
 pub mod state;
 
-use std::sync::Arc;
-
-use eyre::Context;
-
 use crate::state::AppState;
+use eyre::Context;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let state = Arc::new(AppState {});
-    let router = routes::router(state);
+    let router = http::router(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
