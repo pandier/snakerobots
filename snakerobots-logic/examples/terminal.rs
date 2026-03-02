@@ -6,7 +6,7 @@ use std::{
 
 use rand::RngExt;
 use snakerobots_logic::{
-    Direction, Game, GameState, Grid, GridCell, Player, Point, Size, Snake,
+    Direction, Game, Grid, GridCell, Player, Point, Size, Snake,
     robot::impls::PathfindRobot,
 };
 
@@ -72,7 +72,7 @@ fn main() {
 
     let mut instant = Instant::now();
 
-    while game.state() == GameState::Active {
+    while game.result().is_none() {
         sleep(Duration::from_millis(50).saturating_sub(Instant::now().duration_since(instant)));
         instant = Instant::now();
 

@@ -145,23 +145,28 @@ pub enum GridCell {
     Apple,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameResult {
+    Win(usize),
+    Tie,
+}
+
+pub enum GameStep {
+    Success {
+        moves: Vec<(usize, Direction)>,
+    },
+    Finished(GameResult),
+}
+
 pub struct Game {
     size: Size,
     players: Vec<Player>,
     apples: HashSet<Point>,
     grid: Grid,
+    max_steps_without_apple: usize,
+    steps_without_apple: usize,
+    result: Option<GameResult>,
     rng: Xoshiro128PlusPlus,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameState {
-    Active,
-    Win(usize),
-    Tie,
-}
-
-pub struct GameStep {
-    pub moves: Vec<(usize, Direction)>,
 }
 
 impl Game {
@@ -180,6 +185,9 @@ impl Game {
             players,
             grid,
             apples: HashSet::new(),
+            max_steps_without_apple: size.area() as usize,
+            steps_without_apple: 0,
+            result: None,
             rng: Xoshiro128PlusPlus::seed_from_u64(seed),
         };
 
@@ -190,41 +198,11 @@ impl Game {
         Some(game)
     }
 
-    fn iter_snakes(&self) -> impl Iterator<Item = (usize, &Player, &Snake)> {
-        self.players
-            .iter()
-            .enumerate()
-            .filter_map(|(i, player)| player.snake.as_ref().map(|snake| (i, player, snake)))
-    }
-
-    fn update_grid(&mut self) {
-        let mut new_grid = Grid::from_snakes(
-            self.size,
-            self.iter_snakes().map(|(i, _, snake)| (i, snake)),
-        )
-        .unwrap();
-        for apple in &self.apples {
-            *new_grid.get_mut(apple).unwrap() = GridCell::Apple;
-        }
-        self.grid = new_grid;
-    }
-
-    fn place_random_apple(&mut self) {
-        let points = self
-            .grid
-            .iter()
-            .filter(|(_, p)| **p == GridCell::Empty)
-            .map(|(p, _)| p)
-            .collect::<Vec<_>>();
-
-        if !points.is_empty() {
-            let point = points[self.rng.random_range(..points.len())];
-            self.apples.insert(point);
-            *self.grid.get_mut(&point).unwrap() = GridCell::Apple;
-        }
-    }
-
     pub fn step(&mut self) -> GameStep {
+        if let Some(result) = self.result {
+            return GameStep::Finished(result);
+        }
+
         let moves = self
             .iter_snakes()
             .map(|(i, player, snake)| {
@@ -293,16 +271,65 @@ impl Game {
             self.place_random_apple();
         }
 
-        GameStep { moves }
+        if eaten_apples > 0 {
+            self.steps_without_apple = 0;
+        } else {
+            self.steps_without_apple += 1;
+        }
+
+        self.result = self.calculate_result();
+
+        GameStep::Success { moves }
     }
 
-    pub fn state(&self) -> GameState {
-        // TODO: Don't iterate twice
-        match self.iter_snakes().count() {
-            0 => GameState::Tie,
-            1 => GameState::Win(self.iter_snakes().next().unwrap().0),
-            _ => GameState::Active,
+    fn iter_snakes(&self) -> impl Iterator<Item = (usize, &Player, &Snake)> {
+        self.players
+            .iter()
+            .enumerate()
+            .filter_map(|(i, player)| player.snake.as_ref().map(|snake| (i, player, snake)))
+    }
+
+    fn update_grid(&mut self) {
+        let snakes = self.iter_snakes().map(|(i, _, snake)| (i, snake));
+        let mut new_grid = Grid::from_snakes(self.size, snakes).unwrap();
+        for apple in &self.apples {
+            *new_grid.get_mut(apple).unwrap() = GridCell::Apple;
         }
+        self.grid = new_grid;
+    }
+
+    fn place_random_apple(&mut self) {
+        let points = self
+            .grid
+            .iter()
+            .filter(|(_, p)| **p == GridCell::Empty)
+            .map(|(p, _)| p)
+            .collect::<Vec<_>>();
+
+        if !points.is_empty() {
+            let point = points[self.rng.random_range(..points.len())];
+            self.apples.insert(point);
+            *self.grid.get_mut(&point).unwrap() = GridCell::Apple;
+        }
+    }
+
+    fn calculate_result(&self) -> Option<GameResult> {
+        if self.steps_without_apple >= self.max_steps_without_apple {
+            return Some(GameResult::Tie);
+        }
+
+        let mut iter = self.iter_snakes();
+        match iter.next() {
+            Some((i, _, _)) => match iter.next() {
+                Some(_) => None,
+                None => Some(GameResult::Win(i)),
+            }
+            None => Some(GameResult::Tie),
+        }
+    }
+
+    pub fn result(&self) -> Option<GameResult> {
+        self.result
     }
 
     pub fn grid(&self) -> &Grid {

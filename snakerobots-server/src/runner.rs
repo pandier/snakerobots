@@ -1,7 +1,7 @@
 use rand::RngExt;
 use snakerobots_dto::{GameDto, GameMoveDto, GameResultDto, GameSnakeDto};
 use snakerobots_logic::{
-    Direction, Game, GameState, Player, Point, Size, Snake, robot::impls::PathfindRobot,
+    Direction, Game, GameResult, GameStep, Player, Point, Size, Snake, robot::impls::PathfindRobot
 };
 use tokio::task::JoinHandle;
 
@@ -36,23 +36,23 @@ pub fn run_game_blocking() -> GameDto {
         .expect("predefined layout should be correct");
 
     let result = loop {
-        let step = game.step();
-
-        for (i, dir) in step.moves {
-            if let Some(snake) = snakes.get_mut(i) {
-                snake.moves.push(match dir {
-                    Direction::Up => GameMoveDto::Up,
-                    Direction::Down => GameMoveDto::Down,
-                    Direction::Left => GameMoveDto::Left,
-                    Direction::Right => GameMoveDto::Right,
-                });
+        match game.step() {
+            GameStep::Success { moves } => {
+                for (i, dir) in moves {
+                    if let Some(snake) = snakes.get_mut(i) {
+                        snake.moves.push(match dir {
+                            Direction::Up => GameMoveDto::Up,
+                            Direction::Down => GameMoveDto::Down,
+                            Direction::Left => GameMoveDto::Left,
+                            Direction::Right => GameMoveDto::Right,
+                        });
+                    }
+                }
             }
-        }
-
-        match game.state() {
-            GameState::Win(i) => break GameResultDto::Win { winner: i },
-            GameState::Tie => break GameResultDto::Tie,
-            _ => {}
+            GameStep::Finished(result) => break match result {
+                GameResult::Win(i) => GameResultDto::Win { winner: i },
+                GameResult::Tie => GameResultDto::Tie,
+            },
         }
     };
 

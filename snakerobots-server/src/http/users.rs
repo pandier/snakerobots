@@ -14,5 +14,3 @@ async fn get_user(
     Path(user_id): Path<i32>,
 ) -> Json<UserDto> {
 }
-
-
