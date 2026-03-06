@@ -7,7 +7,7 @@ edition = "2024"
 snakerobots-shared = { path = "../snakerobots-shared" }
 tokio = { version = "1.49", features = ["full"] }
 axum = "0.8"
-sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio"] }
+sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio", "uuid"] }
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }

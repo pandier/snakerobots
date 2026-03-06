@@ -38,20 +38,21 @@ pub struct GameTimeline {
 #[godot_api]
 impl GameTimeline {
     #[func]
-    pub fn create() -> Gd<GameTimeline> {
+    pub fn create(width: i32, height: i32) -> Option<Gd<GameTimeline>> {
         let seed = rand::rng().random();
 
-        let width = 25;
-        let height = 13;
+        if width < 7 || height < 3 {
+            return None;
+        }
 
         let players: Vec<Player> = vec![
-            (Point::new(2, height / 2), Direction::Left),
-            (Point::new(width - 3, height / 2), Direction::Right),
+            (Point::new(1, height / 2), Direction::Right),
+            (Point::new(width - 2, height / 2), Direction::Left),
         ]
         .into_iter()
         .map(|(p, d)| {
             let mut snake = Snake::new(p);
-            snake.expand_tail(d);
+            snake.expand_head(d);
             Player::new(snake, Box::new(PathfindRobot::new()))
         })
         .collect();
@@ -59,7 +60,7 @@ impl GameTimeline {
         let game = Game::new(Size::new(width, height), 1, seed, players)
             .expect("predefined layout should be correct");
 
-        Gd::from_object(Self::run_game(game))
+        Some(Gd::from_object(Self::run_game(game)))
     }
 
     pub fn run_game(mut game: Game) -> GameTimeline {

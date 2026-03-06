@@ -7,6 +7,13 @@ pub async fn get_user(app: &AppState, user_id: i32) -> eyre::Result<Option<UserM
         .await?)
 }
 
+pub async fn get_user_by_username(app: &AppState, username: &str) -> eyre::Result<Option<UserModel>> {
+    Ok(sqlx::query_as("SELECT * FROM users WHERE username = $1")
+        .bind(username)
+        .fetch_optional(&app.pg)
+        .await?)
+}
+
 pub async fn create_user(app: &AppState, username: String, password: String) -> eyre::Result<Option<UserModel>> {
     Ok(sqlx::query_as("INSERT INTO users (username, password) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING RETURNING *")
         .bind(username)

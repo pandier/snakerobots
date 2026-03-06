@@ -27,6 +27,10 @@ impl RouteError {
 
 impl IntoResponse for RouteError {
     fn into_response(self) -> axum::response::Response {
+        if let Some(report) = self.report {
+            println!("{}", report);
+        }
+
         #[derive(Debug, Serialize)]
         struct Payload {
             error: String,

@@ -1,5 +1,6 @@
 mod auth;
 mod error;
+mod extract;
 mod users;
 
 use std::sync::Arc;
