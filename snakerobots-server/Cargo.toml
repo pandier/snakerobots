@@ -8,8 +8,9 @@ snakerobots-logic = { path = "../snakerobots-logic" }
 snakerobots-dto = { path = "../snakerobots-dto" }
 tokio = { version = "1.49", features = ["full"] }
 axum = "0.8"
-sqlx = { version = "0.8", features = ["runtime-tokio"] }
+sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio"] }
 serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 
 rand = "0.10"

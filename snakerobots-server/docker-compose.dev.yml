@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: snakerobots
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=devuser@example.com
+      - PGADMIN_DEFAULT_PASSWORD=devpass
+    depends_on:
+      - db
+
+volumes:
+  db_data:

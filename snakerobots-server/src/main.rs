@@ -1,5 +1,7 @@
+pub mod model;
 pub mod http;
 pub mod runner;
+pub mod service;
 pub mod state;
 
 use crate::state::AppState;
@@ -8,7 +10,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let state = Arc::new(AppState {});
+    let state = Arc::new(AppState::new().await?);
     let router = http::router(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")

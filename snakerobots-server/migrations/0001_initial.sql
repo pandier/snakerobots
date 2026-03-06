@@ -2,14 +2,14 @@ CREATE TABLE users (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username VARCHAR(20) NOT NULL UNIQUE,
     password TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE matches (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     seed BIGINT NOT NULL,
     winner_index INT,
-    played_at TIMESTAMPTZ DEFAULT NOW()
+    played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE match_players (
@@ -18,4 +18,10 @@ CREATE TABLE match_players (
     user_id INT REFERENCES users(id) ON DELETE SET NULL,
     moves BYTEA NOT NULL,
     PRIMARY KEY ("index", match_id)
+);
+
+CREATE TABLE sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMPTZ NOT NULL
 );

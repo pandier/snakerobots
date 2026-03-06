@@ -37,7 +37,7 @@ pub fn run_game_blocking() -> GameDto {
 
     let result = loop {
         match game.step() {
-            GameStep::Success { moves } => {
+            GameStep::Success { moves, added_apples: _, removed_apples: _ } => {
                 for (i, dir) in moves {
                     if let Some(snake) = snakes.get_mut(i) {
                         snake.moves.push(match dir {
