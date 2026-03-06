@@ -1767,28 +1767,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "snakerobots-dto"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "serde",
-]
-
-[[package]]
 name = "snakerobots-godot"
 version = "0.1.0"
 dependencies = [
  "godot",
  "rand 0.10.0",
- "snakerobots-logic",
+ "snakerobots-shared",
  "tokio",
-]
-
-[[package]]
-name = "snakerobots-logic"
-version = "0.1.0"
-dependencies = [
- "rand 0.10.0",
 ]
 
 [[package]]
@@ -1801,10 +1786,18 @@ dependencies = [
  "jsonwebtoken",
  "rand 0.10.0",
  "serde",
- "snakerobots-dto",
- "snakerobots-logic",
+ "snakerobots-shared",
  "sqlx",
  "tokio",
+]
+
+[[package]]
+name = "snakerobots-shared"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rand 0.10.0",
+ "serde",
 ]
 
 [[package]]

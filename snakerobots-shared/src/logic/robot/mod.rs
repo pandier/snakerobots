@@ -3,7 +3,7 @@ pub mod impls;
 
 use std::collections::HashSet;
 
-use crate::{Direction, Point, Size, Snake};
+use crate::{Direction, Point, Size, logic::Snake};
 
 pub trait Robot {
     fn step(&self, ctx: RobotContext) -> Direction;

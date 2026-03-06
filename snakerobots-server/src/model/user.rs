@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use snakerobots_dto::UserDto;
+use snakerobots_shared::dto;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct UserModel {
@@ -9,7 +9,7 @@ pub struct UserModel {
     pub created_at: DateTime<Utc>,
 }
 
-impl From<UserModel> for UserDto {
+impl From<UserModel> for dto::User {
     fn from(value: UserModel) -> Self {
         Self {
             id: value.id,

@@ -2,7 +2,7 @@ use std::{collections::{HashMap, HashSet}, i64};
 
 use godot::prelude::*;
 use rand::RngExt;
-use snakerobots_logic::{Direction, Game, GameStep, Player, Point, Size, Snake, robot::impls::PathfindRobot};
+use snakerobots_shared::{Direction, Point, Size, logic::{Game, GameStep, Player, Snake, robot::impls::PathfindRobot}};
 
 #[derive(GodotClass)]
 #[class(init, base=RefCounted)]

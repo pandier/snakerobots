@@ -1,12 +1,12 @@
-pub mod math;
 pub mod robot;
 
 use std::{collections::HashSet, fmt::Debug};
 
 use rand::{RngExt, SeedableRng, rngs::Xoshiro128PlusPlus};
 
-pub use math::{Direction, Point, Size};
 pub use robot::{Robot, RobotContext};
+
+use crate::{Direction, GameResult, Point, Size};
 
 #[derive(Debug, Clone)]
 pub struct Snake(Vec<Point>);
@@ -177,12 +177,6 @@ pub enum GridCell {
     Apple,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameResult {
-    Win(usize),
-    Tie,
-}
-
 pub enum GameStep {
     Success {
         moves: Vec<(usize, Direction)>,
@@ -233,7 +227,7 @@ impl Game {
     }
 
     pub fn step(&mut self) -> GameStep {
-        if let Some(result) = self.result {
+        if let Some(result) = self.result.clone() {
             return GameStep::Finished(result);
         }
 
@@ -365,16 +359,16 @@ impl Game {
 
         let mut iter = self.iter_snakes();
         match iter.next() {
-            Some((i, _, _)) => match iter.next() {
+            Some((winner, _, _)) => match iter.next() {
                 Some(_) => None,
-                None => Some(GameResult::Win(i)),
+                None => Some(GameResult::Win { winner }),
             }
             None => Some(GameResult::Tie),
         }
     }
 
-    pub fn result(&self) -> Option<GameResult> {
-        self.result
+    pub fn result(&self) -> &Option<GameResult> {
+        &self.result
     }
 
     pub fn snakes(&self) -> Vec<&Snake> {

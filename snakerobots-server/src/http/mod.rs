@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use axum::{Json, Router, routing::post};
 use serde::Serialize;
-use snakerobots_dto::GameDto;
+use snakerobots_shared::dto;
 
 use crate::{http::error::RouteResult, runner::run_game, state::AppState};
 
@@ -20,7 +20,7 @@ pub fn router(state: Arc<AppState>) -> Router {
 
 #[derive(Debug, Serialize)]
 struct RunResponse {
-    game: GameDto,
+    game: dto::Game,
 }
 
 async fn run() -> RouteResult<Json<RunResponse>> {

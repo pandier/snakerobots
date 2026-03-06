@@ -1,11 +1,11 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-pub mod moves {
+pub mod directions {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    use crate::GameMoveDto;
+    use crate::Direction;
 
-    pub fn serialize<S>(value: &Vec<GameMoveDto>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(value: &Vec<Direction>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -16,14 +16,14 @@ pub mod moves {
             .serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<GameMoveDto>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Direction>, D::Error>
     where
         D: Deserializer<'de>,
     {
         String::deserialize(deserializer)?
             .chars()
             .map(|c| {
-                GameMoveDto::try_from(c)
+                Direction::try_from(c)
                     .map_err(|_| serde::de::Error::custom(format!("invalid move: '{}'", c)))
             })
             .collect::<Result<Vec<_>, _>>()

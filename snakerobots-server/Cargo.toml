@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-snakerobots-logic = { path = "../snakerobots-logic" }
-snakerobots-dto = { path = "../snakerobots-dto" }
+snakerobots-shared = { path = "../snakerobots-shared" }
 tokio = { version = "1.49", features = ["full"] }
 axum = "0.8"
 sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio"] }

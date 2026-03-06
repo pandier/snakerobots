@@ -1,6 +1,6 @@
 use std::{collections::HashSet, sync::Mutex};
 
-use crate::{Direction, Point, Robot, RobotContext, Snake};
+use crate::{Direction, Point, logic::{Robot, RobotContext, Snake}};
 
 #[derive(Clone)]
 struct Path {

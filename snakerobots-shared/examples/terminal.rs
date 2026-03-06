@@ -5,10 +5,7 @@ use std::{
 };
 
 use rand::RngExt;
-use snakerobots_logic::{
-    Direction, Game, Grid, GridCell, Player, Point, Size, Snake,
-    robot::impls::PathfindRobot,
-};
+use snakerobots_shared::{Direction, Point, Size, logic::{Game, Grid, GridCell, Player, Snake, robot::impls::PathfindRobot}};
 
 fn build_player(x: i32, y: i32, dir: Direction) -> Player {
     let mut snake = Snake::new(Point::new(x, y));

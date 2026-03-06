@@ -73,3 +73,28 @@ impl Direction {
         }
     }
 }
+
+impl TryFrom<char> for Direction {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            'u' | 'U' => Ok(Self::Up),
+            'd' | 'D' => Ok(Self::Down),
+            'l' | 'L' => Ok(Self::Left),
+            'r' | 'R' => Ok(Self::Right),
+            _ => Err(()),
+        }
+    }
+}
+
+impl From<Direction> for char {
+    fn from(value: Direction) -> Self {
+        match value {
+            Direction::Up => 'u',
+            Direction::Down => 'd',
+            Direction::Left => 'l',
+            Direction::Right => 'r',
+        }
+    }
+}

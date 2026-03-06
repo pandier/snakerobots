@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
-use snakerobots_dto::{UserDto, auth::RegisterRequest};
+use snakerobots_shared::dto::{User, auth::RegisterRequest};
 
 use crate::{http::error::{RouteError, RouteResult}, service, state::AppState};
 
@@ -13,7 +13,7 @@ pub fn router() -> Router<Arc<AppState>> {
 async fn register(
     State(app): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
-) -> RouteResult<Json<UserDto>> {
+) -> RouteResult<Json<User>> {
     let user = service::user::create_user(&app, payload.username, payload.password)
         .await?
         .map(|user| user.into());
