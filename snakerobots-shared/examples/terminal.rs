@@ -8,7 +8,7 @@ use rand::RngExt;
 use snakerobots_shared::{Direction, Point, Size, logic::{Game, Grid, GridCell, Player, Snake, robot::impls::PathfindRobot}};
 
 fn build_player(x: i32, y: i32, dir: Direction) -> Player {
-    let mut snake = Snake::new(Point::new(x, y));
+    let mut snake = Snake::new(Point::new(x, y), dir);
     snake.expand_tail(dir.opposite());
     Player::new(snake, Box::new(PathfindRobot::new()))
 }

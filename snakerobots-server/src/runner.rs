@@ -13,13 +13,13 @@ pub fn run_game_blocking() -> dto::Game {
     let height = 13;
 
     let players: Vec<logic::Player> = vec![
-        (Point::new(2, height / 2), Direction::Left),
-        (Point::new(width - 3, height / 2), Direction::Right),
+        (Point::new(1, height / 2), Direction::Right),
+        (Point::new(width - 2, height / 2), Direction::Left),
     ]
     .into_iter()
     .map(|(p, d)| {
-        let mut snake = logic::Snake::new(p);
-        snake.expand_tail(d);
+        let mut snake = logic::Snake::new(p, d);
+        snake.expand_head(d);
         logic::Player::new(snake, Box::new(PathfindRobot::new()))
     })
     .collect();

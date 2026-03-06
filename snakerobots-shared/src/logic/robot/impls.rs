@@ -4,15 +4,17 @@ use crate::{Direction, Point, logic::{Robot, RobotContext, Snake}};
 
 #[derive(Clone)]
 struct Path {
+    prev_dir: Direction,
     dir: Option<Direction>,
     point: Point,
     iteration: usize,
 }
 
 impl Path {
-    pub fn new(point: Point) -> Self {
+    pub fn new(point: Point, dir: Direction) -> Self {
         Self {
             dir: None,
+            prev_dir: dir,
             point,
             iteration: 0,
         }
@@ -21,6 +23,7 @@ impl Path {
     pub fn fork(&self) -> Self {
         Self {
             dir: self.dir.clone(),
+            prev_dir: self.prev_dir.clone(),
             point: self.point,
             iteration: 0,
         }
@@ -33,13 +36,16 @@ impl Path {
     }
 
     pub fn advance(&mut self, dir: Direction, ctx: &RobotContext) -> Option<Self> {
-        let point = self.point.direction(dir);
-        if self.is_safe(point, ctx) {
-            return Some(Self {
-                dir: Some(self.dir.unwrap_or(dir)),
-                point,
-                iteration: self.iteration + 1,
-            });
+        if dir != self.prev_dir.opposite() {
+            let point = self.point.direction(dir);
+            if self.is_safe(point, ctx) {
+                return Some(Self {
+                    dir: Some(self.dir.unwrap_or(dir)),
+                    prev_dir: dir,
+                    point,
+                    iteration: self.iteration + 1,
+                });
+            }
         }
         None
     }
@@ -145,7 +151,7 @@ impl PathfindRobot {
 impl Robot for PathfindRobot {
     fn step(&self, ctx: RobotContext) -> Direction {
         let mut last = self.last.lock().unwrap();
-        let path = self.find_path(Path::new(ctx.snake.head()), &ctx, 40, true);
+        let path = self.find_path(Path::new(ctx.snake.head(), ctx.snake.direction()), &ctx, 40, true);
         *last = path.dir.unwrap_or(*last);
         *last
     }

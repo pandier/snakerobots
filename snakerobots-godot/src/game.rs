@@ -51,7 +51,7 @@ impl GameTimeline {
         ]
         .into_iter()
         .map(|(p, d)| {
-            let mut snake = Snake::new(p);
+            let mut snake = Snake::new(p, d);
             snake.expand_head(d);
             Player::new(snake, Box::new(PathfindRobot::new()))
         })

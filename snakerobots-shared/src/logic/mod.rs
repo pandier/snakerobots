@@ -9,46 +9,66 @@ pub use robot::{Robot, RobotContext};
 use crate::{Direction, GameResult, Point, Size};
 
 #[derive(Debug, Clone)]
-pub struct Snake(Vec<Point>);
+pub struct Snake {
+    points: Vec<Point>,
+    direction: Direction,
+}
 
 impl Snake {
-    pub fn new(point: Point) -> Self {
-        Self(vec![point])
+    pub fn new(point: Point, direction: Direction) -> Self {
+        Self {
+            points: vec![point],
+            direction,
+        }
     }
 
     pub fn head(&self) -> Point {
-        *self.0.first().expect("snake should not be empty")
+        *self.points.first().expect("snake should not be empty")
     }
 
     pub fn tail(&self) -> Point {
-        *self.0.last().expect("snake should not be empty")
+        *self.points.last().expect("snake should not be empty")
     }
 
     pub fn points(&self) -> &Vec<Point> {
-        &self.0
+        &self.points
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.direction
     }
 
     pub fn contains(&self, point: Point) -> bool {
-        self.0.contains(&point)
+        self.points.contains(&point)
     }
 
     pub fn advance(&mut self, dir: Direction) -> bool {
+        if dir == self.direction.opposite() {
+            return false;
+        }
+
         let new_head = self.head().direction(dir);
         if new_head != self.tail() && self.contains(new_head) {
             false
         } else {
             self.pop_tail();
             self.push_head(new_head);
+            self.direction = dir;
             true
         }
     }
 
     pub fn expand_head(&mut self, dir: Direction) -> bool {
+        if dir == self.direction.opposite() {
+            return false;
+        }
+
         let new_head = self.head().direction(dir);
         if self.contains(new_head) {
             false
         } else {
             self.push_head(new_head);
+            self.direction = dir;
             true
         }
     }
@@ -64,24 +84,24 @@ impl Snake {
     }
 
     pub fn push_head(&mut self, point: Point) {
-        self.0.insert(0, point);
+        self.points.insert(0, point);
     }
 
     pub fn push_tail(&mut self, point: Point) {
-        self.0.push(point);
+        self.points.push(point);
     }
 
     pub fn pop_head(&mut self) -> Option<Point> {
-        if self.0.len() > 1 {
-            Some(self.0.remove(0))
+        if self.points.len() > 1 {
+            Some(self.points.remove(0))
         } else {
             None
         }
     }
 
     pub fn pop_tail(&mut self) -> Option<Point> {
-        if self.0.len() > 1 {
-            self.0.pop()
+        if self.points.len() > 1 {
+            self.points.pop()
         } else {
             None
         }
