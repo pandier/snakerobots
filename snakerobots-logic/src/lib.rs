@@ -37,8 +37,8 @@ impl Snake {
         if new_head != self.tail() && self.contains(new_head) {
             false
         } else {
-            self.0.pop();
-            self.0.insert(0, new_head);
+            self.pop_tail();
+            self.push_head(new_head);
             true
         }
     }
@@ -48,7 +48,7 @@ impl Snake {
         if self.contains(new_head) {
             false
         } else {
-            self.0.insert(0, new_head);
+            self.push_head(new_head);
             true
         }
     }
@@ -58,8 +58,32 @@ impl Snake {
         if self.contains(new_tail) {
             false
         } else {
-            self.0.push(new_tail);
+            self.push_tail(new_tail);
             true
+        }
+    }
+
+    pub fn push_head(&mut self, point: Point) {
+        self.0.insert(0, point);
+    }
+
+    pub fn push_tail(&mut self, point: Point) {
+        self.0.push(point);
+    }
+
+    pub fn pop_head(&mut self) -> Option<Point> {
+        if self.0.len() > 1 {
+            Some(self.0.remove(0))
+        } else {
+            None
+        }
+    }
+
+    pub fn pop_tail(&mut self) -> Option<Point> {
+        if self.0.len() > 1 {
+            self.0.pop()
+        } else {
+            None
         }
     }
 }
@@ -75,6 +99,14 @@ impl Player {
             snake: Some(snake),
             robot,
         }
+    }
+
+    pub fn snake(&self) -> Option<&Snake> {
+        self.snake.as_ref()
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.snake.is_some()
     }
 }
 
@@ -154,6 +186,8 @@ pub enum GameResult {
 pub enum GameStep {
     Success {
         moves: Vec<(usize, Direction)>,
+        added_apples: Vec<Point>,
+        removed_apples: Vec<Point>,
     },
     Finished(GameResult),
 }
@@ -221,7 +255,8 @@ impl Game {
             })
             .collect::<Vec<_>>();
 
-        let mut eaten_apples = 0usize;
+        let mut added_apples = Vec::new();
+        let mut removed_apples = Vec::new();
 
         for (i, dir) in &moves {
             let player = &mut self.players[*i];
@@ -235,7 +270,8 @@ impl Game {
             if self.size.contains(&new_head) {
                 let grow = self.apples.remove(&new_head);
                 if grow {
-                    eaten_apples += 1;
+                    removed_apples.push(new_head);
+
                     if snake.expand_head(*dir) {
                         continue;
                     }
@@ -267,11 +303,13 @@ impl Game {
 
         self.update_grid();
 
-        for _ in 0..eaten_apples {
-            self.place_random_apple();
+        for _ in 0..removed_apples.len() {
+            if let Some(apple) = self.place_random_apple() {
+                added_apples.push(apple);
+            }
         }
 
-        if eaten_apples > 0 {
+        if removed_apples.len() > 0 {
             self.steps_without_apple = 0;
         } else {
             self.steps_without_apple += 1;
@@ -279,7 +317,11 @@ impl Game {
 
         self.result = self.calculate_result();
 
-        GameStep::Success { moves }
+        GameStep::Success {
+            moves,
+            added_apples,
+            removed_apples,
+        }
     }
 
     fn iter_snakes(&self) -> impl Iterator<Item = (usize, &Player, &Snake)> {
@@ -298,7 +340,7 @@ impl Game {
         self.grid = new_grid;
     }
 
-    fn place_random_apple(&mut self) {
+    fn place_random_apple(&mut self) -> Option<Point> {
         let points = self
             .grid
             .iter()
@@ -310,6 +352,9 @@ impl Game {
             let point = points[self.rng.random_range(..points.len())];
             self.apples.insert(point);
             *self.grid.get_mut(&point).unwrap() = GridCell::Apple;
+            Some(point)
+        } else {
+            None
         }
     }
 
@@ -332,7 +377,25 @@ impl Game {
         self.result
     }
 
+    pub fn snakes(&self) -> Vec<&Snake> {
+        self.iter_snakes()
+            .map(|(_, _, s)| s)
+            .collect()
+    }
+
+    pub fn players(&self) -> &Vec<Player> {
+        &self.players
+    }
+
+    pub fn apples(&self) -> &HashSet<Point> {
+        &self.apples
+    }
+
     pub fn grid(&self) -> &Grid {
         &self.grid
+    }
+
+    pub fn size(&self) -> Size {
+        self.size
     }
 }
