@@ -39,7 +39,7 @@ async fn login(
             .wrap_err("failed to verify password")?;
         if verified {
             let session = service::auth::create_session(&app, user.id).await?;
-            tracing::info!(user_id=user.id, expires_at=session.expires_at.to_string(), "login");
+            tracing::info!(user_id=user.id.to_string(), expires_at=session.expires_at.to_string(), "login");
             return Ok(Json(LoginResponse {
                 user: user.into(),
                 token: session.id.to_string(),

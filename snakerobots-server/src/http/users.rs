@@ -17,7 +17,7 @@ pub fn router() -> Router<Arc<AppState>> {
 
 async fn get_user(
     State(app): State<Arc<AppState>>,
-    Path(user_id): Path<i32>,
+    Path(user_id): Path<String>,
 ) -> RouteResult<Json<User>> {
     service::user::get_user(&app, user_id)
         .await?

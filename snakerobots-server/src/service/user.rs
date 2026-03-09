@@ -1,9 +1,11 @@
 use eyre::Context;
+use sqlx::types::Uuid;
 
 use crate::{model::user::UserModel, service, state::AppState};
 
-pub async fn get_user(app: &AppState, user_id: i32) -> eyre::Result<Option<UserModel>> {
-    Ok(sqlx::query_as("SELECTA * FROM users WHERE id = $1")
+pub async fn get_user(app: &AppState, user_id: impl TryInto<Uuid>) -> eyre::Result<Option<UserModel>> {
+    let Ok(user_id) = user_id.try_into() else { return Ok(None); };
+    Ok(sqlx::query_as("SELECT * FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_optional(&app.pg)
         .await?)
