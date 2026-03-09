@@ -201,7 +201,7 @@ pub struct GameTimelineSnake {
 
 impl GameTimelineSnake {
     pub fn forward(&mut self, time: usize) {
-        if let Some(step) = self.steps.get_mut(time) {
+        if let Some(step) = self.steps.get(time) {
             self.current.push_head(step.head);
             if step.tail.is_some() {
                 self.current.pop_tail();
@@ -210,7 +210,7 @@ impl GameTimelineSnake {
     }
 
     pub fn backward(&mut self, time: usize) {
-        if let Some(step) = self.steps.get_mut(time) {
+        if let Some(step) = self.steps.get(time) {
             if let Some(tail) = step.tail {
                 self.current.push_tail(tail);
             }
@@ -343,8 +343,8 @@ impl GameTimelineSnakeBuilder {
     }
 
     pub fn record(&mut self, snake: &Snake) {
-        let tail: Point = snake.tail();
-        let step = if self.current.tail() == tail {
+        let tail: Point = self.current.tail();
+        let step = if tail == snake.tail() {
             GameTimelineSnakeStep {
                 tail: None,
                 head: snake.head(),
