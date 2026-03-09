@@ -151,8 +151,25 @@ impl GameTimeline {
 
     #[func]
     pub fn get_snakes(&self) -> Array<Gd<GameSnake>> {
-        self.snakes.iter()
-            .filter(|snake| snake.is_alive(self.time))
+        Self::convert_snakes(self.time, &self.snakes)
+    }
+
+    #[func]
+    pub fn get_next_snakes(&self) -> Array<Gd<GameSnake>> {
+        if self.time >= self.length {
+            return Array::new();
+        }
+
+        let mut next_snakes = self.snakes.clone();
+        for snake in &mut next_snakes {
+            snake.forward(self.time);
+        }
+        Self::convert_snakes(self.time + 1, &next_snakes)
+    }
+
+    fn convert_snakes<'a>(time: usize, snakes: &Vec<GameTimelineSnake>) -> Array<Gd<GameSnake>> {
+        snakes.iter()
+            .filter(|snake| snake.is_alive(time))
             .map(|snake| GameSnake::create(snake.current.points().iter()
                 .map(|point| Vector2i::new(point.x, point.y))
                 .collect::<Array<_>>()))
@@ -187,11 +204,13 @@ impl GameTimeline {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct GameTimelineSnakeStep {
     tail: Option<Point>,
     head: Point,
 }
 
+#[derive(Debug, Clone)]
 pub struct GameTimelineSnake {
     start: Snake,
     end: Snake,

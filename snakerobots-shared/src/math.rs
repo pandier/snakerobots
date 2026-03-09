@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point {
     pub x: i32,
@@ -72,10 +74,29 @@ impl Direction {
             Direction::Right => vec.x += 1,
         }
     }
+
+    pub fn vec_to_string(vec: &Vec<Self>) -> String {
+        vec.iter().map(|d| char::from(*d)).collect()
+    }
+
+    pub fn try_vec_from_string(string: String) -> Result<Vec<Self>, DirFromCharError> {
+        string.chars().map(|c| Direction::try_from(c)).collect()
+    }
 }
 
+#[derive(Debug)]
+pub struct DirFromCharError(char);
+
+impl fmt::Display for DirFromCharError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid move: {}", self.0)
+    }
+}
+
+impl std::error::Error for DirFromCharError {}
+
 impl TryFrom<char> for Direction {
-    type Error = ();
+    type Error = DirFromCharError;
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
@@ -83,7 +104,7 @@ impl TryFrom<char> for Direction {
             'd' | 'D' => Ok(Self::Down),
             'l' | 'L' => Ok(Self::Left),
             'r' | 'R' => Ok(Self::Right),
-            _ => Err(()),
+            _ => Err(DirFromCharError(value)),
         }
     }
 }

@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use sqlx::types::Uuid;
 
-use crate::{model::session::SessionModel, state::AppState};
+use crate::{model::SessionModel, state::AppState};
 
 pub async fn verify_session(app: &AppState, session_id: impl TryInto<Uuid>) -> eyre::Result<Option<SessionModel>> {
     Ok(get_session(app, session_id)

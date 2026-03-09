@@ -1,7 +1,7 @@
 use eyre::Context;
 use sqlx::types::Uuid;
 
-use crate::{model::user::UserModel, service, state::AppState};
+use crate::{model::UserModel, service, state::AppState};
 
 pub async fn get_user(app: &AppState, user_id: impl TryInto<Uuid>) -> eyre::Result<Option<UserModel>> {
     let Ok(user_id) = user_id.try_into() else { return Ok(None); };

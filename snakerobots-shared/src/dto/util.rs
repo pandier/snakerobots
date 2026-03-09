@@ -9,24 +9,15 @@ pub mod directions {
     where
         S: Serializer,
     {
-        value
-            .iter()
-            .map(|m| char::from(*m))
-            .collect::<String>()
-            .serialize(serializer)
+        Direction::vec_to_string(value).serialize(serializer)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Direction>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        String::deserialize(deserializer)?
-            .chars()
-            .map(|c| {
-                Direction::try_from(c)
-                    .map_err(|_| serde::de::Error::custom(format!("invalid move: '{}'", c)))
-            })
-            .collect::<Result<Vec<_>, _>>()
+        Direction::try_vec_from_string(String::deserialize(deserializer)?)
+            .map_err(|e| serde::de::Error::custom(format!("{}", e)))
     }
 }
 
