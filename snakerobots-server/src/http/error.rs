@@ -28,7 +28,7 @@ impl RouteError {
 impl IntoResponse for RouteError {
     fn into_response(self) -> axum::response::Response {
         if let Some(report) = self.report {
-            println!("{}", report);
+            tracing::error!("{:?}", report);
         }
 
         #[derive(Debug, Serialize)]
@@ -46,7 +46,7 @@ impl From<eyre::Report> for RouteError {
         Self {
             code: StatusCode::INTERNAL_SERVER_ERROR,
             error: "internal".into(),
-            message: "Something went wrong.".into(),
+            message: "Something went wrong".into(),
             report: Some(value),
         }
     }

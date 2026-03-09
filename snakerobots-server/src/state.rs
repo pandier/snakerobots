@@ -11,7 +11,7 @@ impl AppState {
         let pg = PgPoolOptions::new()
             .connect("postgres://devuser:devpass@localhost:5432/snakerobots")
             .await
-            .wrap_err("Failed to connect to Postgres database")?;
+            .wrap_err("failed to connect to Postgres database")?;
 
         Ok(AppState { pg })
     }

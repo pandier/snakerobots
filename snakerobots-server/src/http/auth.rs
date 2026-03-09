@@ -18,8 +18,9 @@ async fn register(
 ) -> RouteResult<Json<User>> {
     let user = service::user::create_user(&app, payload.username, payload.password)
         .await?
-        .map(|user| user.into());
+        .map(|user| User::from(user));
     if let Some(user) = user {
+        tracing::info!(user_id=user.id, username=&user.username, "register");
         Ok(Json(user))
     } else {
         Err(RouteError::new(StatusCode::CONFLICT, "username_taken", "This username is already taken"))
@@ -35,9 +36,10 @@ async fn login(
     if let Some(user) = user {
         let verified = service::crypto::verify_password(payload.password, user.password.clone())
             .await
-            .wrap_err("Failed to verify password")?;
+            .wrap_err("failed to verify password")?;
         if verified {
             let session = service::auth::create_session(&app, user.id).await?;
+            tracing::info!(user_id=user.id, expires_at=session.expires_at.to_string(), "login");
             return Ok(Json(LoginResponse {
                 user: user.into(),
                 token: session.id.to_string(),

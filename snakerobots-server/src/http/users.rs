@@ -31,6 +31,6 @@ async fn get_me(
 ) -> RouteResult<Json<User>> {
     Ok(Json(service::user::get_user(&app, user_id)
         .await?
-        .wrap_err("Authenticated user is missing from database")?
+        .wrap_err("authenticated user is missing from database")?
         .into()))
 }

@@ -14,7 +14,7 @@ pub async fn hash_password(password: String) -> eyre::Result<String> {
 pub async fn verify_password(password: String, hash: String) -> eyre::Result<bool> {
     tokio::task::spawn_blocking(move || {
         PasswordHash::new(&hash)
-            .map_err(|e| eyre::eyre!("Failed to parse password hash: {}", e))
+            .map_err(|e| eyre::eyre!("failed to parse password hash: {}", e))
             .map(|parsed_hash| {
                 Argon2::default().verify_password(password.as_bytes(), &parsed_hash).is_ok()
             })

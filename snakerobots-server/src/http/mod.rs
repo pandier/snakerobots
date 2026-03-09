@@ -6,12 +6,29 @@ mod users;
 use std::sync::Arc;
 
 use axum::{Json, Router, routing::post};
+use eyre::Context;
 use serde::Serialize;
 use snakerobots_shared::dto;
+use tower_http::trace::TraceLayer;
 
 use crate::{http::error::RouteResult, runner::run_game, state::AppState};
 
-pub fn router(state: Arc<AppState>) -> Router {
+pub async fn serve(state: Arc<AppState>) -> eyre::Result<()> {
+    let router = router(state)
+        .layer(TraceLayer::new_for_http());
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+        .await
+        .wrap_err("failed to bind server")?;
+
+    tracing::info!("listening on {}", listener.local_addr()?);
+
+    axum::serve(listener, router).await?;
+
+    Ok(())
+}
+
+fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/run", post(run))
         .nest("/auth", auth::router())
