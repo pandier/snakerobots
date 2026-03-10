@@ -9,5 +9,6 @@ crate-type = ["cdylib"]
 [dependencies]
 snakerobots-shared = { path = "../snakerobots-shared" }
 godot = "0.4.5"
-tokio = { version = "1.50.0", features = ["rt", "sync"] }
+smol = "2.0"
 rand = "0.10"
+surf = "2.3"

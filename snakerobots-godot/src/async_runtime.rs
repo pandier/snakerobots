@@ -1,43 +1,113 @@
 use godot::{classes::Engine, prelude::*};
-use tokio::sync::oneshot;
+use smol::Task;
 
 #[derive(GodotClass)]
-#[class(base=Object)]
+#[class(init, base=Node)]
 pub struct AsyncRuntime {
-    handle: tokio::runtime::Handle,
-    _cancel: oneshot::Sender<()>,
+    executor: smol::LocalExecutor<'static>,
 }
 
+#[godot_api]
 impl AsyncRuntime {
-    pub fn runtime() -> tokio::runtime::Handle {
-        Engine::singleton()
-            .get_singleton(&Self::class_id().to_string_name())
-            .expect("missing `AsyncRuntime` singleton")
-            .cast::<AsyncRuntime>()
-            .bind()
-            .handle
-            .clone()
+    pub fn instance() -> Gd<Self> {
+        assert!(
+            godot::sys::is_main_thread(),
+            "`try_instance` must be called on the main thread"
+        );
+
+        let Some(mut root) = Engine::singleton()
+            .get_main_loop()
+            .and_then(|x| x.try_cast::<SceneTree>().ok())
+            .and_then(|x| x.get_root())
+        else {
+            panic!("scene tree is not available yet");
+        };
+
+        // TODO: make runtime singleton and create a separate node as dispatcher
+
+        godot_print!("children: {:?}", root.get_children().iter_shared().map(|x| x.get_name().to_string()).collect::<Vec<_>>());
+
+        let name = Self::class_id().to_string_name();
+
+        if let Some(node) = root.get_node_or_null(&NodePath::from(&name)) {
+            node.cast()
+        } else {
+            let mut node = AsyncRuntime::new_alloc();
+            node.set_name(&name);
+
+            let node_cloned = node.clone();
+            root.run_deferred_gd(move |mut root| {
+                root.add_child(&node_cloned);
+            });
+
+            node
+        }
+    }
+
+    pub fn spawn_gd<T: 'static>(future: impl Future<Output = T> + 'static) -> Gd<SrFuture>
+    where
+        T: ToGodot,
+    {
+        let gd_future = SrFuture::new_gd();
+        let mut gd_future_clone = gd_future.clone();
+
+        Self::spawn(async move {
+            gd_future_clone
+                .bind_mut()
+                .complete(future.await.to_variant());
+        })
+        .detach();
+
+        gd_future
+    }
+
+    pub fn spawn<T: 'static>(future: impl Future<Output = T> + 'static) -> Task<T> {
+        let inst = Self::instance();
+        inst.bind().executor().spawn(future)
+    }
+
+    pub fn executor(&self) -> &smol::LocalExecutor<'static> {
+        &self.executor
     }
 }
 
 #[godot_api]
-impl IObject for AsyncRuntime {
-    fn init(_base: Base<Object>) -> Self {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("failed to create tokio runtime");
+impl INode for AsyncRuntime {
+    fn process(&mut self, _delta: f64) {
+        while self.executor.try_tick() {}
+    }
+}
 
-        let handle = runtime.handle().clone();
-        let (tx, rx) = oneshot::channel();
+#[derive(GodotClass)]
+#[class(init, base=RefCounted)]
+pub struct SrFuture {
+    result: Option<Variant>,
+    base: Base<RefCounted>,
+}
 
-        std::thread::spawn(move || {
-            let _ = runtime.block_on(rx);
-        });
+#[godot_api]
+impl SrFuture {
+    #[signal]
+    fn completed(result: Variant);
 
-        Self {
-            handle,
-            _cancel: tx,
+    #[func]
+    pub fn complete(&mut self, result: Variant) -> bool {
+        if self.result.is_some() {
+            false
+        } else {
+            self.result = Some(result.clone());
+            self.signals().completed().emit(&result);
+            true
         }
+    }
+
+    #[func]
+    pub fn get_result(&self) -> Variant {
+        self.result.clone().unwrap_or(Variant::nil())
+    }
+
+    #[func]
+    pub fn is_completed(&self) -> bool {
+        self.result.is_some()
     }
 }
