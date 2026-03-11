@@ -1,0 +1,29 @@
+name: snakerobots-dev
+
+services:
+  db:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: snakerobots
+    volumes:
+      - db_data:/var/lib/postgresql
+  app:
+    build:
+      context: ../..
+      dockerfile: server.Dockerfile
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "48923:3000"
+    environment:
+      RUST_LOG: debug
+      DATABASE_URL: postgres://devuser:devpass@db:5432/snakerobots
+    env_file:
+      - .env
+
+volumes:
+  db_data:

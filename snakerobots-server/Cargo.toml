@@ -10,7 +10,8 @@ tokio = { version = "1.49", features = ["full"] }
 futures = "0.3"
 
 axum = "0.8"
-tower-http = { version = "0.6", features = ["trace"] }
+tower-http = { version = "0.6", features = ["trace", "validate-request"] }
+tower = "0.5"
 
 sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio", "uuid"] }
 
@@ -23,3 +24,5 @@ rand = "0.10"
 eyre = "0.6"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features=["env-filter"] }
+dotenvy = "0.15"
+http-body = "1.0.1"
