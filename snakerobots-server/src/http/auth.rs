@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use eyre::Context;
-use snakerobots_shared::dto::{User, auth::{LoginRequest, LoginResponse, RegisterRequest}};
+use snakerobots_shared::dto::{User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}};
 
 use crate::{http::error::{RouteError, RouteResult}, service, state::AppState};
 
@@ -15,13 +15,16 @@ pub fn router() -> Router<Arc<AppState>> {
 async fn register(
     State(app): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
-) -> RouteResult<Json<User>> {
+) -> RouteResult<Json<RegisterResponse>> {
     let user = service::user::create_user(&app, payload.username, payload.password)
-        .await?
-        .map(|user| User::from(user));
+        .await?;
     if let Some(user) = user {
-        tracing::info!(user_id=user.id, username=&user.username, "register");
-        Ok(Json(user))
+        let session = service::auth::create_session(&app, user.id).await?;
+        tracing::info!(user_id=user.id.to_string(), username=&user.username, "register");
+        Ok(Json(RegisterResponse {
+            user: user.into(),
+            token: session.id.to_string(),
+        }))
     } else {
         Err(RouteError::new(StatusCode::CONFLICT, "username_taken", "This username is already taken"))
     }

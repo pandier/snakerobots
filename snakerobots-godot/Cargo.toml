@@ -6,9 +6,16 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+dev-api = []
+
 [dependencies]
 snakerobots-shared = { path = "../snakerobots-shared" }
 godot = "0.4.5"
 smol = "2.0"
 rand = "0.10"
 surf = "2.3"
+arc-swap = "1.8"
+
+[build-dependencies]
+dotenvy = "0.15"
