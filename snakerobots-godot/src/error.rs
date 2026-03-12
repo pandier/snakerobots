@@ -58,7 +58,7 @@ pub struct SrError {
 #[godot_api]
 impl SrError {
     #[func]
-    pub fn new(code: GString, message: GString) -> Gd<Self> {
+    pub fn create(code: GString, message: GString) -> Gd<Self> {
         Gd::from_object(Self { code, message })
     }
 }
