@@ -6,7 +6,7 @@ pub struct SrResult {
     #[var]
     pub value: Variant,
     #[var]
-    pub err: Variant,
+    pub err: Option<Gd<SrError>>,
 }
 
 #[godot_api]
@@ -15,22 +15,45 @@ impl SrResult {
     pub fn value(value: Variant) -> Gd<Self> {
         Gd::from_object(Self {
             value,
-            err: Variant::nil(),
+            err: None,
         })
     }
 
     #[func]
-    pub fn err(err: Variant) -> Gd<Self> {
+    pub fn err(err: Gd<SrError>) -> Gd<Self> {
         Gd::from_object(Self {
             value: Variant::nil(),
-            err,
+            err: Some(err),
         })
     }
 
-    pub fn from<T, E>(result: Result<T, E>) -> Gd<Self> where T: ToGodot, E: std::fmt::Display {
+    pub fn from<T, E>(result: Result<T, E>) -> Gd<Self> where T: ToGodot, E: Into<SrError> {
         match result {
             Ok(v) => SrResult::value(v.to_variant()),
-            Err(err) => SrResult::err(format!("{}", err).to_variant()),
+            Err(err) => SrResult::err(Gd::from_object(err.into())),
         }
+    }
+}
+
+#[derive(GodotClass)]
+#[class(init, base=RefCounted)]
+pub struct SrError {
+    #[var]
+    pub code: GString,
+    #[var]
+    pub message: GString,
+}
+
+#[godot_api]
+impl SrError {
+    #[func]
+    pub fn new(code: GString, message: GString) -> Gd<Self> {
+        Gd::from_object(Self { code, message })
+    }
+}
+
+impl<E: std::fmt::Display> From<E> for SrError {
+    fn from(value: E) -> Self {
+        Self { code: "unknown".to_godot(), message: format!("{}", value).to_godot() }
     }
 }

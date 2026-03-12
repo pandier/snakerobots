@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 use godot::prelude::*;
-use snakerobots_shared::dto::{User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}};
-use surf::{Url, http::headers::AUTHORIZATION, middleware::{Middleware, Next}};
+use snakerobots_shared::dto::{self, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}};
+use surf::{StatusCode, Url, http::{convert::DeserializeOwned, headers::AUTHORIZATION}, middleware::{Middleware, Next}};
 
-use crate::{AsyncRuntime, SrFuture, SrResult};
+use crate::{AsyncRuntime, SrFuture, SrResult, error::SrError};
 
 type Token = Arc<ArcSwap<Option<String>>>;
 
@@ -43,7 +43,7 @@ impl SrClient {
             let req = LoginRequest { username, password };
             let res = this.client.post("/auth/login")
                 .body_json(&req)?
-                .recv_json::<LoginResponse>()
+                .parse_response_json::<LoginResponse>()
                 .await?;
             this.set_auth(Some(res.token), Some(res.user));
             Ok(())
@@ -57,7 +57,7 @@ impl SrClient {
             let req = RegisterRequest { username, password };
             let res = this.client.post("/auth/register")
                 .body_json(&req)?
-                .recv_json::<RegisterResponse>()
+                .parse_response_json::<RegisterResponse>()
                 .await?;
             this.set_auth(Some(res.token), Some(res.user));
             Ok(())
@@ -70,7 +70,7 @@ impl SrClient {
             let mut this = self_gd.bind_mut();
             let res = this.client.get("/users/me")
                 .header(AUTHORIZATION, format!("Bearer {}", &token))
-                .recv_json::<User>()
+                .parse_response_json::<User>()
                 .await?;
             this.set_auth(Some(token), Some(res));
             Ok(())
@@ -88,7 +88,7 @@ impl SrClient {
     }
 
     #[func]
-    pub fn get_user(&self) -> Option<Gd<SrUser>> {
+    pub fn get_me(&self) -> Option<Gd<SrUser>> {
         self.user.as_ref().map(SrUser::create)
     }
 
@@ -98,11 +98,13 @@ impl SrClient {
     }
 
     #[inline]
-    fn spawn_result<T>(&self, f: impl AsyncFnOnce(Gd<Self>) -> Result<T, Box<dyn std::error::Error>> + 'static) -> Gd<SrFuture>
+    fn spawn_result<T>(&self, f: impl AsyncFnOnce(Gd<Self>) -> Result<T, SrClientError> + 'static) -> Gd<SrFuture>
     where
         T: ToGodot + 'static,
     {
-        self.spawn_gd(async move |self_gd| SrResult::from(f(self_gd).await))
+        self.spawn_gd(async move |self_gd| {
+            SrResult::from(f(self_gd).await)
+        })
     }
 
     #[inline]
@@ -162,5 +164,57 @@ impl Middleware for AuthorizationMiddleware {
             }
         }
         next.run(req, client).await
+    }
+}
+
+#[derive(Debug)]
+enum SrClientError {
+    Surf(surf::Error),
+    ResponseError(dto::Error),
+    ResponseString(StatusCode, String),
+}
+
+impl From<SrClientError> for SrError {
+    fn from(value: SrClientError) -> Self {
+        let (code, message) = match value {
+            SrClientError::Surf(surf) => ("unknown".to_godot(), format!("{}", surf).to_godot()),
+            SrClientError::ResponseString(code, err) => ("unknown".to_godot(), format!("{}: {}", code, err).to_godot()),
+            SrClientError::ResponseError(err) => (err.error.to_godot(), err.message.to_godot()),
+        };
+        Self { code, message }
+    }
+}
+
+impl From<surf::Error> for SrClientError {
+    fn from(value: surf::Error) -> Self {
+        Self::Surf(value)
+    }
+}
+
+trait ParseResponse: Sized {
+    async fn parse_response(self) -> Result<String, SrClientError>;
+    async fn parse_response_json<T>(self) -> Result<T, SrClientError> where T: DeserializeOwned {
+        self.parse_response().await
+            .and_then(|body| serde_json::from_str::<T>(&body)
+                .map_err(|err| SrClientError::from(surf::Error::from(err))))
+    }
+}
+
+impl ParseResponse for surf::Response {
+    async fn parse_response(mut self) -> Result<String, SrClientError> {
+        let body = self.body_string().await?;
+        if self.status().is_success() {
+            Ok(body)
+        } else if let Ok(error) = serde_json::from_str(&body) {
+            Err(SrClientError::ResponseError(error))
+        } else {
+            Err(SrClientError::ResponseString(self.status(), body))
+        }
+    }
+}
+
+impl ParseResponse for surf::RequestBuilder {
+    async fn parse_response(self) -> Result<String, SrClientError> {
+        self.send().await?.parse_response().await
     }
 }

@@ -2768,6 +2768,7 @@ dependencies = [
  "dotenvy",
  "godot",
  "rand 0.10.0",
+ "serde_json",
  "smol",
  "snakerobots-shared",
  "surf",

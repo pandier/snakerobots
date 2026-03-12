@@ -2,48 +2,22 @@ use godot::{classes::Engine, prelude::*};
 use smol::Task;
 
 #[derive(GodotClass)]
-#[class(init, base=Node)]
+#[class(singleton)]
 pub struct AsyncRuntime {
     executor: smol::LocalExecutor<'static>,
 }
 
 #[godot_api]
-impl AsyncRuntime {
-    pub fn instance() -> Gd<Self> {
-        assert!(
-            godot::sys::is_main_thread(),
-            "`try_instance` must be called on the main thread"
-        );
-
-        let Some(mut root) = Engine::singleton()
-            .get_main_loop()
-            .and_then(|x| x.try_cast::<SceneTree>().ok())
-            .and_then(|x| x.get_root())
-        else {
-            panic!("scene tree is not available yet");
-        };
-
-        // TODO: make runtime singleton and create a separate node as dispatcher
-
-        godot_print!("children: {:?}", root.get_children().iter_shared().map(|x| x.get_name().to_string()).collect::<Vec<_>>());
-
-        let name = Self::class_id().to_string_name();
-
-        if let Some(node) = root.get_node_or_null(&NodePath::from(&name)) {
-            node.cast()
-        } else {
-            let mut node = AsyncRuntime::new_alloc();
-            node.set_name(&name);
-
-            let node_cloned = node.clone();
-            root.run_deferred_gd(move |mut root| {
-                root.add_child(&node_cloned);
-            });
-
-            node
+impl IObject for AsyncRuntime {
+    fn init(_base: Base<Object>) -> Self {
+        Self {
+            executor: smol::LocalExecutor::new(),
         }
     }
+}
 
+#[godot_api]
+impl AsyncRuntime {
     pub fn spawn_gd<T: 'static>(future: impl Future<Output = T> + 'static) -> Gd<SrFuture>
     where
         T: ToGodot,
@@ -62,7 +36,7 @@ impl AsyncRuntime {
     }
 
     pub fn spawn<T: 'static>(future: impl Future<Output = T> + 'static) -> Task<T> {
-        let inst = Self::instance();
+        let inst = Self::singleton();
         inst.bind().executor().spawn(future)
     }
 
@@ -71,10 +45,40 @@ impl AsyncRuntime {
     }
 }
 
+#[derive(GodotClass)]
+#[class(init, base=Node)]
+pub struct AsyncDispatcher;
+
 #[godot_api]
-impl INode for AsyncRuntime {
+impl AsyncDispatcher {
+    pub fn ensure_created() {
+        assert!(
+            godot::sys::is_main_thread(),
+            "`ensure_created` must be called on the main thread"
+        );
+
+        if let Some(mut root) = Engine::singleton()
+            .get_main_loop()
+            .and_then(|x| x.try_cast::<SceneTree>().ok())
+            .and_then(|x| x.get_root()) {
+
+            let name = Self::class_id().to_string_name();
+            if root.get_node_or_null(&NodePath::from(&name)).is_none() {
+                let mut node = AsyncDispatcher::new_alloc();
+                node.set_name(&name);
+                root.add_child(&node);
+            }
+        }
+    }
+}
+
+#[godot_api]
+impl INode for AsyncDispatcher {
     fn process(&mut self, _delta: f64) {
-        while self.executor.try_tick() {}
+        let runtime_gd = AsyncRuntime::singleton();
+        let runtime = runtime_gd.bind();
+        let executor = runtime.executor();
+        while executor.try_tick() {}
     }
 }
 

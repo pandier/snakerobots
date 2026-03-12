@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use eyre::Context;
-use snakerobots_shared::dto::{User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}};
+use snakerobots_shared::dto::auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse};
 
 use crate::{http::error::{RouteError, RouteResult}, service, state::AppState};
 

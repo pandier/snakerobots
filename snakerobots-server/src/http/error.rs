@@ -1,5 +1,5 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use serde::Serialize;
+use snakerobots_shared::dto;
 
 pub type RouteResult<T> = Result<T, RouteError>;
 
@@ -31,13 +31,7 @@ impl IntoResponse for RouteError {
             tracing::error!("{:?}", report);
         }
 
-        #[derive(Debug, Serialize)]
-        struct Payload {
-            error: String,
-            message: String,
-        }
-
-        (self.code, Json(Payload { error: self.error, message: self.message })).into_response()
+        (self.code, Json(dto::Error { error: self.error, message: self.message })).into_response()
     }
 }
 
