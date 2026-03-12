@@ -60,8 +60,8 @@ impl AsyncDispatcher {
         if let Some(mut root) = Engine::singleton()
             .get_main_loop()
             .and_then(|x| x.try_cast::<SceneTree>().ok())
-            .and_then(|x| x.get_root()) {
-
+            .and_then(|x| x.get_root())
+        {
             let name = Self::class_id().to_string_name();
             if root.get_node_or_null(&NodePath::from(&name)).is_none() {
                 let mut node = AsyncDispatcher::new_alloc();

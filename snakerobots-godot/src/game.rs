@@ -1,8 +1,14 @@
-use std::{collections::{HashMap, HashSet}, i64};
+use std::{
+    collections::{HashMap, HashSet},
+    i64,
+};
 
 use godot::prelude::*;
 use rand::RngExt;
-use snakerobots_shared::{Direction, Point, Size, logic::{Game, GameStep, Player, Snake, robot::impls::PathfindRobot}};
+use snakerobots_shared::{
+    Direction, Point, Size,
+    logic::{Game, GameStep, Player, Snake, robot::impls::PathfindRobot},
+};
 
 #[derive(GodotClass)]
 #[class(init, base=RefCounted)]
@@ -67,7 +73,11 @@ impl GameTimeline {
         let mut builder = GameTimelineBuilder::new(game.snakes(), game.apples().clone());
         loop {
             match game.step() {
-                GameStep::Success { moves, added_apples, removed_apples } => {
+                GameStep::Success {
+                    moves,
+                    added_apples,
+                    removed_apples,
+                } => {
                     for (i, _) in moves {
                         if let Some(snake) = game.players().get(i).and_then(|p| p.snake()) {
                             builder.record_snake(i, snake);
@@ -77,7 +87,7 @@ impl GameTimeline {
                 }
                 GameStep::Finished(_) => break,
             }
-        };
+        }
         builder.build(game.size(), game.apples().clone())
     }
 
@@ -168,17 +178,27 @@ impl GameTimeline {
     }
 
     fn convert_snakes<'a>(time: usize, snakes: &Vec<GameTimelineSnake>) -> Array<Gd<GameSnake>> {
-        snakes.iter()
+        snakes
+            .iter()
             .filter(|snake| snake.is_alive(time))
-            .map(|snake| GameSnake::create(snake.current.points().iter()
-                .map(|point| Vector2i::new(point.x, point.y))
-                .collect::<Array<_>>()))
+            .map(|snake| {
+                GameSnake::create(
+                    snake
+                        .current
+                        .points()
+                        .iter()
+                        .map(|point| Vector2i::new(point.x, point.y))
+                        .collect::<Array<_>>(),
+                )
+            })
             .collect::<Array<_>>()
     }
 
     #[func]
     pub fn get_apples(&self) -> Array<Vector2i> {
-        self.apples.current.iter()
+        self.apples
+            .current
+            .iter()
             .map(|point| Vector2i::new(point.x, point.y))
             .collect::<Array<_>>()
     }
@@ -323,7 +343,8 @@ impl GameTimelineBuilder {
 
     pub fn record_apples(&mut self, added: Vec<Point>, removed: Vec<Point>) {
         if !added.is_empty() || !removed.is_empty() {
-            self.apples.insert(self.index, GameTimelineAppleStep { added, removed });
+            self.apples
+                .insert(self.index, GameTimelineAppleStep { added, removed });
         }
 
         self.index += 1;
@@ -341,7 +362,7 @@ impl GameTimelineBuilder {
                 steps: self.apples,
                 current: self.start_apples,
             },
-            time: 0
+            time: 0,
         }
     }
 }

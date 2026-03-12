@@ -1,13 +1,13 @@
 mod async_runtime;
 mod client;
-mod game;
 mod error;
+mod game;
 
 use godot::prelude::*;
 
 use crate::async_runtime::AsyncDispatcher;
 pub use crate::async_runtime::{AsyncRuntime, SrFuture};
-pub use crate::error::{SrResult};
+pub use crate::error::SrResult;
 
 struct SnakerobotsExtension;
 

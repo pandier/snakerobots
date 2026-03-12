@@ -13,10 +13,7 @@ pub struct SrResult {
 impl SrResult {
     #[func]
     pub fn value(value: Variant) -> Gd<Self> {
-        Gd::from_object(Self {
-            value,
-            err: None,
-        })
+        Gd::from_object(Self { value, err: None })
     }
 
     #[func]
@@ -27,7 +24,11 @@ impl SrResult {
         })
     }
 
-    pub fn from<T, E>(result: Result<T, E>) -> Gd<Self> where T: ToGodot, E: Into<SrError> {
+    pub fn from<T, E>(result: Result<T, E>) -> Gd<Self>
+    where
+        T: ToGodot,
+        E: Into<SrError>,
+    {
         match result {
             Ok(v) => SrResult::value(v.to_variant()),
             Err(err) => SrResult::err(Gd::from_object(err.into())),
@@ -54,6 +55,9 @@ impl SrError {
 
 impl<E: std::fmt::Display> From<E> for SrError {
     fn from(value: E) -> Self {
-        Self { code: "unknown".to_godot(), message: format!("{}", value).to_godot() }
+        Self {
+            code: "unknown".to_godot(),
+            message: format!("{}", value).to_godot(),
+        }
     }
 }
