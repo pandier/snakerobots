@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: devuser
       POSTGRES_PASSWORD: devpass
       POSTGRES_DB: snakerobots
+    ports:
+      - "48924:5432"
     volumes:
       - db_data:/var/lib/postgresql
   app:
@@ -22,6 +24,7 @@ services:
     environment:
       RUST_LOG: debug
       DATABASE_URL: postgres://devuser:devpass@db:5432/snakerobots
+      SESSION_TIMEOUT: 3600
     env_file:
       - .env
 

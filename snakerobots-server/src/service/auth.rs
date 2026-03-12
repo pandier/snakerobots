@@ -1,4 +1,4 @@
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use sqlx::types::Uuid;
 
 use crate::{model::SessionModel, state::AppState};
@@ -18,7 +18,7 @@ pub async fn get_session(app: &AppState, session_id: impl TryInto<Uuid>) -> eyre
 }
 
 pub async fn create_session(app: &AppState, user_id: Uuid) -> eyre::Result<SessionModel> {
-    let expires_at = Utc::now() + Duration::days(30);
+    let expires_at = Utc::now() + app.session_timeout;
     Ok(sqlx::query_as("INSERT INTO sessions (user_id, expires_at) VALUES ($1, $2) RETURNING *")
         .bind(user_id)
         .bind(expires_at)
