@@ -20,19 +20,6 @@ pub struct MatchPlayer {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MatchRequest {
-    pub receiver_id: String,
-    pub sender_id: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateMatchRequest {
-    pub receiver_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Game {
     #[serde(with = "crate::dto::util::Hex")]
     pub seed: u64,

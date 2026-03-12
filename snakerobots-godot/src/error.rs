@@ -36,6 +36,16 @@ impl SrResult {
     }
 }
 
+#[godot_api]
+impl IRefCounted for SrResult {
+    fn to_string(&self) -> GString {
+        match &self.err {
+            Some(err) => format!("err({})", err).to_godot(),
+            None => format!("value({})", self.value.to_string()).to_godot(),
+        }
+    }
+}
+
 #[derive(GodotClass)]
 #[class(init, base=RefCounted)]
 pub struct SrError {
@@ -50,6 +60,13 @@ impl SrError {
     #[func]
     pub fn new(code: GString, message: GString) -> Gd<Self> {
         Gd::from_object(Self { code, message })
+    }
+}
+
+#[godot_api]
+impl IRefCounted for SrError {
+    fn to_string(&self) -> GString {
+        format!("{{code=\"{}\",message=\"{}\"}}", self.code, self.message).to_godot()
     }
 }
 

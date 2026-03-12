@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use snakerobots_shared::{Direction, GameResult, dto::game::{Match, MatchPlayer, MatchRequest}};
+use snakerobots_shared::{Direction, GameResult, dto::{MatchRequest, game::{Match, MatchPlayer}}};
 use sqlx::{Row, postgres::PgRow, types::Uuid};
 
 #[derive(Debug, Clone, sqlx::FromRow)]

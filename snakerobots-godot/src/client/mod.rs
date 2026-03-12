@@ -5,8 +5,7 @@ mod middleware;
 use arc_swap::ArcSwap;
 use godot::prelude::*;
 use snakerobots_shared::dto::{
-    User,
-    auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse},
+    MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{CreateMatchRequest, DeleteMatchRequest}
 };
 use std::sync::Arc;
 use surf::{
@@ -92,6 +91,68 @@ impl SrClient {
                 .await?;
             this.set_auth(Some(token), Some(res));
             Ok(())
+        })
+    }
+
+    #[func]
+    pub fn get_match_requests(&self) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let res = self_gd.bind().client
+                .get("/match-requests")
+                .parse_response_json::<Vec<MatchRequest>>()
+                .await?;
+            Ok(res.iter()
+                .map(|req| SrMatchRequest::create(req))
+                .collect::<Array<_>>())
+        })
+    }
+
+    #[func]
+    pub fn create_match_request(&self, receiver_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let req = CreateMatchRequest { receiver_id };
+            let res = self_gd.bind().client
+                .post("/match-requests")
+                .body_json(&req)?
+                .parse_response_json::<MatchRequest>()
+                .await?;
+            Ok(SrMatchRequest::create(&res))
+        })
+    }
+
+    #[func]
+    pub fn delete_match_request(&self, sender_id: String, receiver_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            self_gd.bind()._delete_match_request(sender_id, receiver_id).await
+        })
+    }
+
+    pub async fn _delete_match_request(&self, sender_id: String, receiver_id: String) -> Result<(), SrClientError> {
+        let req = DeleteMatchRequest { sender_id, receiver_id };
+        let _ = self.client
+            .delete("/match-requests")
+            .body_json(&req)?
+            .parse_response()
+            .await?;
+        // TODO: bool depending on status code (200 or 204)
+        Ok(())
+    }
+
+    #[func]
+    pub fn cancel_match_request(&self, receiver_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let this = self_gd.bind();
+            let user = this.user.as_ref().ok_or(SrClientError::Unauthorized)?;
+            this._delete_match_request(user.id.clone(), receiver_id).await
+        })
+    }
+
+    #[func]
+    pub fn decline_match_request(&self, sender_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let this = self_gd.bind();
+            let user = this.user.as_ref().ok_or(SrClientError::Unauthorized)?;
+            this._delete_match_request(sender_id, user.id.clone()).await
         })
     }
 
