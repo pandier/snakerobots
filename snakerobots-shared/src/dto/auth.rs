@@ -4,7 +4,9 @@ use crate::dto::User;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterRequest {
+    #[serde(deserialize_with = "super::util::username")]
     pub username: String,
+    #[serde(deserialize_with = "super::util::password")]
     pub password: String,
 }
 
@@ -16,7 +18,9 @@ pub struct RegisterResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoginRequest {
+    #[serde(deserialize_with = "super::util::username")]
     pub username: String,
+    #[serde(deserialize_with = "super::util::password")]
     pub password: String,
 }
 

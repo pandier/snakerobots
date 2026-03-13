@@ -15,13 +15,12 @@ pub struct Match {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchPlayer {
     pub user_id: Option<String>,
-    #[serde(with = "crate::dto::util::directions")]
+    #[serde(with = "super::util::directions")]
     pub moves: Vec<Direction>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Game {
-    #[serde(with = "crate::dto::util::Hex")]
     pub seed: u64,
     pub snakes: Vec<GameSnake>,
     #[serde(flatten)]
@@ -30,6 +29,6 @@ pub struct Game {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameSnake {
-    #[serde(with = "crate::dto::util::directions")]
+    #[serde(with = "super::util::directions")]
     pub moves: Vec<Direction>,
 }

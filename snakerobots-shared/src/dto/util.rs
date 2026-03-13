@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer};
 
 pub mod directions {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -21,32 +21,34 @@ pub mod directions {
     }
 }
 
-pub trait Hex: Sized {
-    fn to_hex(&self) -> String;
-    fn from_hex(str: &str) -> Option<Self>;
-
-    fn serialize<S>(value: &Self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        value.to_hex().serialize(serializer)
-    }
-
-    fn deserialize<'de, D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Self::from_hex(&String::deserialize(deserializer)?)
-            .ok_or_else(|| serde::de::Error::custom("invalid hex"))
+pub fn username<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let mut s = String::deserialize(deserializer)?;
+    let len = s.len();
+    if len < 3 || len > 20 {
+        Err(serde::de::Error::custom("username must be between 3 and 20 characters"))
+    } else if !s.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        Err(serde::de::Error::custom("username can only consist of a-z, 0-9 and _"))
+    } else {
+        s.make_ascii_lowercase();
+        Ok(s)
     }
 }
 
-impl Hex for u64 {
-    fn to_hex(&self) -> String {
-        format!("{:016x}", self)
-    }
-
-    fn from_hex(str: &str) -> Option<Self> {
-        Self::from_str_radix(str, 16).ok()
+pub fn password<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let len = s.len();
+    if len < 8 || len > 128 {
+        Err(serde::de::Error::custom("password must be between 8 and 128 characters"))
+    } else if !s.chars().all(|c| !c.is_control()) {
+        Err(serde::de::Error::custom("password contains illegal characters"))
+    } else {
+        Ok(s)
     }
 }
+ 
