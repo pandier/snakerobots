@@ -5,7 +5,7 @@ mod middleware;
 use arc_swap::ArcSwap;
 use godot::prelude::*;
 use snakerobots_shared::dto::{
-    MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{CreateMatchRequest, DeleteMatchRequest}
+    Match, MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}
 };
 use std::sync::Arc;
 use surf::{
@@ -95,6 +95,19 @@ impl SrClient {
     }
 
     #[func]
+    pub fn get_matches(&self, user_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let res = self_gd.bind().client
+                .get(format!("/users/{}/matches", user_id))
+                .parse_response_json::<Vec<Match>>()
+                .await?;
+            Ok(res.into_iter()
+                .map(|req| SrMatch::create(req))
+                .collect::<Array<_>>())
+        })
+    }
+
+    #[func]
     pub fn get_match_requests(&self) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
             let res = self_gd.bind().client
@@ -117,6 +130,19 @@ impl SrClient {
                 .parse_response_json::<MatchRequest>()
                 .await?;
             Ok(SrMatchRequest::create(&res))
+        })
+    }
+
+    #[func]
+    pub fn accept_match_request(&self, sender_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let req = AcceptMatchRequest { sender_id };
+            let _ = self_gd.bind().client
+                .post("/match-requests/accept")
+                .body_json(&req)?
+                .parse_response()
+                .await?;
+            Ok(())
         })
     }
 

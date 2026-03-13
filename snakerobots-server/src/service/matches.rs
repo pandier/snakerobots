@@ -1,6 +1,6 @@
 use chrono::{Duration, Utc};
 use eyre::Context;
-use snakerobots_shared::dto;
+use snakerobots_shared::{Direction, dto};
 use sqlx::types::Uuid;
 
 use crate::{model::{MatchModel, MatchPlayerModel, matches::MatchRequestModel}, state::AppState};
@@ -18,9 +18,34 @@ pub async fn resolve_match(app: &AppState, match_: MatchModel) -> eyre::Result<d
     Ok(match_.into_dto(players))
 }
 
+pub async fn create_match(app: &AppState, seed: u64, winner: Option<usize>, snakes: Vec<(&dto::GameSnake, Uuid)>) -> eyre::Result<MatchModel> {
+    let mut tx = app.pg.begin().await?;
+
+    let model: MatchModel = sqlx::query_as("INSERT INTO matches (seed, winner_index, aborted) VALUES ($1, $2, $3) RETURNING *")
+        .bind(seed as i64)
+        .bind(winner.map(|index| index as i32))
+        .bind(false)
+        .fetch_one(&mut *tx)
+        .await?;
+
+    for (index, (snake, user_id)) in snakes.into_iter().enumerate() {
+        sqlx::query("INSERT INTO match_players (\"index\", match_id, user_id, moves) VALUES ($1, $2, $3, $4)")
+            .bind(index as i32)
+            .bind(model.id)
+            .bind(user_id)
+            .bind(Direction::vec_to_string(&snake.moves))
+            .execute(&mut *tx)
+            .await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(model)
+}
+
 pub async fn get_match_players(app: &AppState, id: impl TryInto<Uuid>) -> eyre::Result<Vec<MatchPlayerModel>> {
     let Ok(id) = id.try_into() else { return Ok(vec![]); };
-    Ok(sqlx::query_as("SELECT * FROM matches m INNER JOIN match_players p ON m.id = p.match_id ORDER BY p.index ASC")
+    Ok(sqlx::query_as("SELECT * FROM match_players WHERE match_id = $1")
         .bind(id)
         .fetch_all(&app.pg)
         .await?)

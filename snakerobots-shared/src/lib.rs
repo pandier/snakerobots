@@ -12,3 +12,12 @@ pub enum GameResult {
     Tie,
     Abort,
 }
+
+impl GameResult {
+    pub fn winner(&self) -> Option<usize> {
+        match self {
+            Self::Win { winner } => Some(*winner),
+            _ => None,
+        }
+    }
+}

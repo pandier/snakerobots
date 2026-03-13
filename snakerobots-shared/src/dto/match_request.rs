@@ -20,3 +20,8 @@ pub struct DeleteMatchRequest {
     pub sender_id: String,
     pub receiver_id: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AcceptMatchRequest {
+    pub sender_id: String,
+}

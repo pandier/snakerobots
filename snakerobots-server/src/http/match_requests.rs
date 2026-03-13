@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::{delete, get, post}};
-use snakerobots_shared::dto::match_request::{CreateMatchRequest, DeleteMatchRequest, MatchRequest};
+use snakerobots_shared::dto::match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest, MatchRequest};
 use sqlx::types::Uuid;
 
 use crate::{http::{error::{RouteError, RouteResult}, extract::AuthedUser}, service, state::AppState};
@@ -11,6 +11,7 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/", get(get_match_requests))
         .route("/", post(create_match_request))
         .route("/", delete(delete_match_request))
+        .route("/accept", post(accept_match_request))
 }
 
 async fn get_match_requests(
@@ -30,7 +31,7 @@ async fn create_match_request(
     Json(payload): Json<CreateMatchRequest>,
 ) -> RouteResult<Json<MatchRequest>> {
     let Ok(receiver_id) = Uuid::try_from(payload.receiver_id) else {
-        return Err(RouteError::new(StatusCode::BAD_REQUEST, "bad_request", "Invalid id"));
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
     };
 
     // TODO: Check if user exists
@@ -49,13 +50,13 @@ async fn delete_match_request(
     Json(payload): Json<DeleteMatchRequest>,
 ) -> RouteResult<StatusCode> {
     let Ok(sender_id) = Uuid::try_from(payload.sender_id) else {
-        return Err(RouteError::new(StatusCode::BAD_REQUEST, "bad_request", "Invalid id"));
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
     };
     let Ok(receiver_id) = Uuid::try_from(payload.receiver_id) else {
-        return Err(RouteError::new(StatusCode::BAD_REQUEST, "bad_request", "Invalid id"));
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
     };
     if sender_id != user_id && receiver_id != user_id {
-        return Err(RouteError::new(StatusCode::FORBIDDEN, "forbidden", "Cannot delete match requests that are not related to the authenticated user"));
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "bad_request", "Match request must relate to the authenticated user"));
     }
 
     let success = service::matches::delete_match_request(&app, sender_id, receiver_id).await?;
@@ -64,5 +65,24 @@ async fn delete_match_request(
         Ok(StatusCode::OK)
     } else {
         Ok(StatusCode::NO_CONTENT)
+    }
+}
+
+async fn accept_match_request(
+    State(app): State<Arc<AppState>>,
+    AuthedUser(user_id): AuthedUser,
+    Json(payload): Json<AcceptMatchRequest>,
+) -> RouteResult<StatusCode> {
+    let Ok(sender_id) = Uuid::try_from(payload.sender_id) else {
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
+    };
+
+    let success = service::matches::delete_match_request(&app, sender_id, user_id).await?;
+
+    if success {
+        service::game::queue_game(app.clone(), sender_id, user_id);
+        Ok(StatusCode::ACCEPTED)
+    } else {
+        Ok(StatusCode::NOT_FOUND)
     }
 }
