@@ -1,12 +1,12 @@
-#[cfg(feature = "robot-impls")]
 pub mod impls;
+pub mod replay;
 
 use std::collections::HashSet;
 
 use crate::{Direction, Point, Size, logic::Snake};
 
 pub trait Robot {
-    fn step(&self, ctx: RobotContext) -> Direction;
+    fn step(&mut self, ctx: RobotContext) -> Direction;
 }
 
 pub struct RobotContext {

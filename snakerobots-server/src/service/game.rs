@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use eyre::{Context, ContextCompat};
-use rand::RngExt;
-use snakerobots_shared::{Direction, Point, Size, dto, logic::{self, robot::impls::PathfindRobot}};
+use eyre::Context;
+use snakerobots_shared::{dto, logic::{self}};
 use sqlx::types::Uuid;
 
 use crate::{service, state::AppState};
@@ -28,30 +27,11 @@ async fn run_game(app: Arc<AppState>, player1: Uuid, player2: Uuid) -> eyre::Res
 }
 
 fn run_game_blocking() -> eyre::Result<dto::Game> {
-    let seed = rand::rng().random();
+    let mut game = logic::standard::create_standard_game();
 
-    let width = 25;
-    let height = 13;
-
-    let players: Vec<logic::Player> = vec![
-        (Point::new(1, height / 2), Direction::Right),
-        (Point::new(width - 2, height / 2), Direction::Left),
-    ]
-    .into_iter()
-    .map(|(p, d)| {
-        let mut snake = logic::Snake::new(p, d);
-        snake.expand_head(d);
-        logic::Player::new(snake, Box::new(PathfindRobot::new()))
-    })
-    .collect();
-
-    let mut snakes: Vec<dto::GameSnake> = players
-        .iter()
+    let mut snakes: Vec<dto::GameSnake> = game.players().iter()
         .map(|_| dto::GameSnake { moves: Vec::new() })
         .collect();
-
-    let mut game = logic::Game::new(Size::new(width, height), 1, seed, players)
-        .wrap_err("predefined layout should be correct")?;
 
     let result = loop {
         match game.step() {
@@ -67,7 +47,7 @@ fn run_game_blocking() -> eyre::Result<dto::Game> {
     };
 
     Ok(dto::Game {
-        seed,
+        seed: game.seed(),
         snakes,
         result,
     })

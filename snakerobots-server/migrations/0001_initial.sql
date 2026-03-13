@@ -15,7 +15,7 @@ CREATE TABLE matches (
 
 CREATE TABLE match_players (
     "index" INT NOT NULL,
-    match_id UUID NOT NULL,
+    match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     moves TEXT NOT NULL,
     PRIMARY KEY ("index", match_id)

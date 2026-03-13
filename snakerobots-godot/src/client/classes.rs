@@ -1,5 +1,7 @@
 use godot::prelude::*;
-use snakerobots_shared::dto::{Match, MatchPlayer, MatchRequest, User};
+use snakerobots_shared::{Size, dto::{Match, MatchPlayer, MatchRequest, User}, logic::{self, Game, Player, robot::replay::ReplayRobot, standard::{STANDARD_APPLE_COUNT, STANDARD_HEIGHT, STANDARD_WIDTH}}};
+
+use crate::game::GameTimeline;
 
 #[derive(GodotClass)]
 #[class(no_init, base=RefCounted)]
@@ -49,7 +51,23 @@ impl SrMatch {
         })
     }
 
-    // TODO: create_timeline
+    // TODO: asynchronous
+    #[func]
+    pub fn create_timeline(&self) -> Gd<GameTimeline> {
+        let players = logic::standard::create_standard_snakes()
+            .into_iter()
+            .enumerate()
+            .map(|(i, snake)| {
+                let robot = ReplayRobot::new(self.match_.players[i].moves.clone());
+                Player::new(snake, Box::new(robot))
+            })
+            .collect();
+        let size = Size::new(STANDARD_WIDTH, STANDARD_HEIGHT);
+        let game = Game::new(size, STANDARD_APPLE_COUNT, self.match_.seed, players)
+            .expect("invalid game layout");
+        let timeline = GameTimeline::run_game(game);
+        Gd::from_object(timeline)
+    }
 }
 
 #[derive(GodotClass)]

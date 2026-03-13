@@ -11,7 +11,7 @@ use eyre::Context;
 use tower::ServiceBuilder;
 use tower_http::{trace::TraceLayer, validate_request::ValidateRequestHeaderLayer};
 
-use crate::{middleware::dev_token::DevTokenHeader, state::AppState};
+use crate::{middleware::DevTokenHeader, state::AppState};
 
 pub async fn serve(state: Arc<AppState>) -> eyre::Result<()> {
     let router = router(state);

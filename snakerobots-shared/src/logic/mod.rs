@@ -1,6 +1,7 @@
 pub mod robot;
+pub mod standard;
 
-use std::{collections::HashSet, fmt::Debug};
+use std::{cell::RefCell, collections::HashSet, fmt::Debug};
 
 use rand::{RngExt, SeedableRng, rngs::Xoshiro128PlusPlus};
 
@@ -110,14 +111,14 @@ impl Snake {
 
 pub struct Player {
     snake: Option<Snake>,
-    robot: Box<dyn Robot>,
+    robot: RefCell<Box<dyn Robot>>,
 }
 
 impl Player {
     pub fn new(snake: Snake, robot: Box<dyn Robot>) -> Self {
         Self {
             snake: Some(snake),
-            robot,
+            robot: RefCell::new(robot),
         }
     }
 
@@ -208,6 +209,7 @@ pub enum GameStep {
 
 pub struct Game {
     size: Size,
+    seed: u64,
     players: Vec<Player>,
     apples: HashSet<Point>,
     grid: Grid,
@@ -230,6 +232,7 @@ impl Game {
 
         let mut game = Self {
             size,
+            seed,
             players,
             grid,
             apples: HashSet::new(),
@@ -264,7 +267,8 @@ impl Game {
                         .collect(),
                     apples: self.apples.clone(),
                 };
-                let dir = player.robot.step(ctx);
+                let mut robot = player.robot.borrow_mut();
+                let dir = robot.step(ctx);
                 (i, dir)
             })
             .collect::<Vec<_>>();
@@ -407,6 +411,10 @@ impl Game {
 
     pub fn grid(&self) -> &Grid {
         &self.grid
+    }
+
+    pub fn seed(&self) -> u64 {
+        self.seed
     }
 
     pub fn size(&self) -> Size {

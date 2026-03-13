@@ -4,10 +4,9 @@ use std::{
 };
 
 use godot::prelude::*;
-use rand::RngExt;
 use snakerobots_shared::{
-    Direction, Point, Size,
-    logic::{Game, GameStep, Player, Snake, robot::impls::PathfindRobot},
+    Point, Size,
+    logic::{self, Game, GameStep, Snake},
 };
 
 #[derive(GodotClass)]
@@ -45,28 +44,8 @@ pub struct GameTimeline {
 impl GameTimeline {
     #[func]
     pub fn create(width: i32, height: i32) -> Option<Gd<GameTimeline>> {
-        let seed = rand::rng().random();
-
-        if width < 7 || height < 3 {
-            return None;
-        }
-
-        let players: Vec<Player> = vec![
-            (Point::new(1, height / 2), Direction::Right),
-            (Point::new(width - 2, height / 2), Direction::Left),
-        ]
-        .into_iter()
-        .map(|(p, d)| {
-            let mut snake = Snake::new(p, d);
-            snake.expand_head(d);
-            Player::new(snake, Box::new(PathfindRobot::new()))
-        })
-        .collect();
-
-        let game = Game::new(Size::new(width, height), 1, seed, players)
-            .expect("predefined layout should be correct");
-
-        Some(Gd::from_object(Self::run_game(game)))
+        logic::standard::create_standard_game_with_size(width, height).ok()
+            .map(|game| Gd::from_object(Self::run_game(game)))
     }
 
     pub fn run_game(mut game: Game) -> GameTimeline {

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Mutex};
+use std::collections::HashSet;
 
 use crate::{Direction, Point, logic::{Robot, RobotContext, Snake}};
 
@@ -95,13 +95,13 @@ impl Path {
 }
 
 pub struct PathfindRobot {
-    last: Mutex<Direction>,
+    last: Direction,
 }
 
 impl PathfindRobot {
     pub fn new() -> Self {
         Self {
-            last: Mutex::new(Direction::Up),
+            last: Direction::Up,
         }
     }
 
@@ -149,10 +149,9 @@ impl PathfindRobot {
 }
 
 impl Robot for PathfindRobot {
-    fn step(&self, ctx: RobotContext) -> Direction {
-        let mut last = self.last.lock().unwrap();
+    fn step(&mut self, ctx: RobotContext) -> Direction {
         let path = self.find_path(Path::new(ctx.snake.head(), ctx.snake.direction()), &ctx, 40, true);
-        *last = path.dir.unwrap_or(*last);
-        *last
+        self.last = path.dir.unwrap_or(self.last);
+        self.last
     }
 }
