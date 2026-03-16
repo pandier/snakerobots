@@ -1,12 +1,12 @@
 use chrono::Utc;
 use sqlx::types::Uuid;
 
-use crate::{model::SessionModel, state::AppState};
+use crate::{model::SessionModel, service::error::ServiceResult, state::AppState};
 
 pub async fn verify_session(app: &AppState, session_id: impl TryInto<Uuid>) -> eyre::Result<Option<SessionModel>> {
     Ok(get_session(app, session_id)
         .await?
-        .filter(|x| Utc::now() < x.expires_at))
+        .filter(|x| Utc::now() <= x.expires_at))
 }
 
 pub async fn get_session(app: &AppState, session_id: impl TryInto<Uuid>) -> eyre::Result<Option<SessionModel>> {
@@ -24,4 +24,11 @@ pub async fn create_session(app: &AppState, user_id: Uuid) -> eyre::Result<Sessi
         .bind(expires_at)
         .fetch_one(&app.pg)
         .await?)
+}
+
+pub async fn cleanup_sessions(app: &AppState) -> ServiceResult<()> {
+    sqlx::query("DELETE FROM sessions WHERE expires_at <= now()")
+        .execute(&app.pg)
+        .await?;
+    Ok(())
 }

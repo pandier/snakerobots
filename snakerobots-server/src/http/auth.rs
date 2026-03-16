@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use eyre::Context;
 use snakerobots_shared::dto::auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse};
+use tracing::info;
 
 use crate::{http::error::{RouteError, RouteResult}, service, state::AppState};
 
@@ -20,7 +21,7 @@ async fn register(
         .await?;
     if let Some(user) = user {
         let session = service::auth::create_session(&app, user.id).await?;
-        tracing::info!(user_id=user.id.to_string(), username=&user.username, "register");
+        info!(user_id=user.id.to_string(), username=&user.username, "register");
         Ok(Json(RegisterResponse {
             user: user.into(),
             token: session.id.to_string(),
@@ -42,7 +43,7 @@ async fn login(
             .wrap_err("failed to verify password")?;
         if verified {
             let session = service::auth::create_session(&app, user.id).await?;
-            tracing::info!(user_id=user.id.to_string(), expires_at=session.expires_at.to_string(), "login");
+            info!(user_id=user.id.to_string(), expires_at=session.expires_at.to_string(), "login");
             return Ok(Json(LoginResponse {
                 user: user.into(),
                 token: session.id.to_string(),

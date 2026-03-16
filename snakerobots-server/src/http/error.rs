@@ -1,5 +1,6 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
 use snakerobots_shared::dto;
+use tracing::error;
 
 pub type RouteResult<T> = Result<T, RouteError>;
 
@@ -37,7 +38,7 @@ impl RouteError {
 impl IntoResponse for RouteError {
     fn into_response(self) -> axum::response::Response {
         if let Some(report) = self.report {
-            tracing::error!("{}", report);
+            error!("{}", report);
         }
 
         (self.code, Json(dto::Error { error: self.error, message: self.message })).into_response()

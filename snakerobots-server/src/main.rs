@@ -6,9 +6,10 @@ pub mod state;
 
 use crate::state::{AppState, env_optional};
 use eyre::Context;
-use tracing::level_filters::LevelFilter;
+use tokio::time::sleep;
+use tracing::{debug, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -23,7 +24,7 @@ async fn main() -> eyre::Result<()> {
     let state = Arc::new(AppState::new().await?);
 
     if env_optional("MIGRATE")?.unwrap_or(true) {
-        tracing::info!("running migrations");
+        info!("running migrations");
 
         sqlx::migrate!()
             .run(&state.pg)
@@ -31,5 +32,20 @@ async fn main() -> eyre::Result<()> {
             .wrap_err("failed to run migrations")?;
     }
 
+    tokio::spawn(cleanup_task(state.clone()));
+
     http::serve(state).await
+}
+
+async fn cleanup_task(app: Arc<AppState>) {
+    loop {
+        sleep(Duration::from_mins(30)).await;
+        debug!("executing cleanups");
+        let _ = service::auth::cleanup_sessions(&app)
+            .await
+            .inspect_err(|err| tracing::error!("failed to cleanup sessions: {}", err));
+        let _ = service::matches::cleanup_match_requests(&app)
+            .await
+            .inspect_err(|err| tracing::error!("failed to cleanup match requests: {}", err));
+    }
 }

@@ -3,12 +3,13 @@ use std::sync::Arc;
 use eyre::Context;
 use snakerobots_shared::{dto, logic::{self}};
 use sqlx::types::Uuid;
+use tracing::error;
 
 use crate::{service, state::AppState};
 
 pub fn queue_game(app: Arc<AppState>, player1: Uuid, player2: Uuid) {
     tokio::spawn(async move {
-        let _ = run_game(app, player1, player2).await.inspect_err(|err| tracing::error!("{:?}", err));
+        let _ = run_game(app, player1, player2).await.inspect_err(|err| error!("{:?}", err));
     });
 }
 

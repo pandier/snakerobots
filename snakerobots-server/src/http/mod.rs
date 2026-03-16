@@ -10,6 +10,7 @@ use axum::Router;
 use eyre::Context;
 use tower::ServiceBuilder;
 use tower_http::{trace::TraceLayer, validate_request::ValidateRequestHeaderLayer};
+use tracing::info;
 
 use crate::{middleware::DevTokenHeader, state::AppState};
 
@@ -20,7 +21,7 @@ pub async fn serve(state: Arc<AppState>) -> eyre::Result<()> {
         .await
         .wrap_err("failed to bind server")?;
 
-    tracing::info!("listening on {}", listener.local_addr()?);
+    info!("listening on {}", listener.local_addr()?);
 
     axum::serve(listener, router).await?;
 

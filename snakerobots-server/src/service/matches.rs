@@ -86,7 +86,9 @@ pub async fn delete_match_request(app: &AppState, sender_id: Uuid, receiver_id: 
     Ok(result.rows_affected() > 0)
 }
 
-pub enum CreateMatchRequestError {
-    LimitReached,
-    AlreadyExists,
+pub async fn cleanup_match_requests(app: &AppState) -> ServiceResult<()> {
+    sqlx::query("DELETE FROM match_requests WHERE expires_at <= now()")
+        .execute(&app.pg)
+        .await?;
+    Ok(())
 }
