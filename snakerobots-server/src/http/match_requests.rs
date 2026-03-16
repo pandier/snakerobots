@@ -4,7 +4,7 @@ use axum::{Json, Router, extract::State, http::StatusCode, routing::{delete, get
 use snakerobots_shared::dto::match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest, MatchRequest};
 use sqlx::types::Uuid;
 
-use crate::{http::{error::{RouteError, RouteResult}, extract::AuthedUser}, service, state::AppState};
+use crate::{http::{error::{RouteError, RouteResult}, extract::AuthedUser}, service::{self, error::ServiceError}, state::AppState};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -35,12 +35,13 @@ async fn create_match_request(
     };
 
     // TODO: Check if user exists
-    let request = service::matches::create_match_request(&app, user_id, receiver_id).await?;
+    let result = service::matches::create_match_request(&app, user_id, receiver_id).await;
 
-    if let Some(request) = request {
-        Ok(Json(request.into()))
-    } else {
-        Err(RouteError::new(StatusCode::CONFLICT, "already_requested", "You have already requested a match with this user"))
+    match result {
+        Ok(v) => Ok(Json(v.into())),
+        Err(ServiceError::AlreadyExists(_)) => Err(RouteError::new(StatusCode::CONFLICT, "already_exists", "You have already requested a match with this user")),
+        Err(ServiceError::LimitReached(_)) => Err(RouteError::new(StatusCode::CONFLICT, "limit_reached", "You reached the limit for the number amount of match requests")),
+        Err(e) => Err(e.into())
     }
 }
 

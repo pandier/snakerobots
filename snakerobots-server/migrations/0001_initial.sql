@@ -35,3 +35,15 @@ CREATE TABLE sessions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL
 );
+
+-- Enforce the match request limit
+CREATE FUNCTION enforce_match_request_limit() RETURNS TRIGGER AS $$
+    BEGIN
+        IF (SELECT COUNT(*) FROM match_requests WHERE sender_id = NEW.sender_id) >= 5 THEN
+            RAISE EXCEPTION USING MESSAGE = 'Maximum number of match requests reached', ERRCODE = '23Z01';
+        END IF;
+        RETURN NEW;
+    END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER match_request_limit BEFORE INSERT ON match_requests
+    FOR EACH ROW EXECUTE FUNCTION enforce_match_request_limit();

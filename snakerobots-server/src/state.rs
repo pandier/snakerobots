@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{env::VarError, str::FromStr};
 
 use chrono::Duration;
 use eyre::Context;
@@ -18,7 +18,7 @@ impl AppState {
             _ => {},
         }
 
-        let dev_token = env("DEV_TOKEN").ok();
+        let dev_token = env_optional("DEV_TOKEN")?;
         let session_timeout = Duration::seconds(env("SESSION_TIMEOUT")?);
         let pg_url = env::<String>("DATABASE_URL")?;
 
@@ -27,14 +27,32 @@ impl AppState {
             .await
             .wrap_err("failed to connect to Postgres database")?;
 
-        Ok(AppState { dev_token, session_timeout, pg })
+        Ok(AppState {
+            dev_token,
+            session_timeout,
+            pg,
+        })
     }
 }
 
-fn env<T: FromStr>(key: &str) -> eyre::Result<T> where T::Err: std::fmt::Display {
-    std::env::var(key)
-        .map_err(|err| eyre::eyre!("{}", err))
-        .and_then(|v| v.parse::<T>()
-            .map_err(|err| eyre::eyre!("{}", err)))
-        .wrap_err_with(|| format!("couldn't interpret {} env", key))
+pub fn env<T: FromStr>(key: &str) -> eyre::Result<T>
+where
+    T::Err: std::error::Error + Send + Sync + 'static,
+{
+    env_optional::<T>(key)
+        .map(|v| v.ok_or_else(|| eyre::eyre!("missing environment variable {}", key)))
+        .flatten()
+}
+
+pub fn env_optional<T: FromStr>(key: &str) -> eyre::Result<Option<T>>
+where
+    T::Err: std::error::Error + Send + Sync + 'static,
+{
+    match std::env::var(key) {
+        Ok(s) => s.parse::<T>()
+            .map(|v| Some(v))
+            .map_err(|e| eyre::eyre!("failed to parse environment variable {}: {}", key, e)),
+        Err(VarError::NotPresent) => Ok(None),
+        Err(e) => Err(eyre::eyre!("failed to get environment variable {}: {}", key, e)),
+    }
 }

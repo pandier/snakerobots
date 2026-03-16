@@ -7,7 +7,7 @@ pub struct RouteError {
     code: StatusCode,
     error: String,
     message: String,
-    report: Option<eyre::Report>,
+    report: Option<Box<dyn std::error::Error>>,
 }
 
 impl RouteError {
@@ -23,25 +23,30 @@ impl RouteError {
     pub fn not_found() -> Self {
         Self::new(StatusCode::NOT_FOUND, "not_found", "Not Found")
     }
+
+    pub fn internal(report: Box<dyn std::error::Error>) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            error: "internal".into(),
+            message: "Something went wrong".into(),
+            report: Some(report),
+        }
+    }
 }
 
 impl IntoResponse for RouteError {
     fn into_response(self) -> axum::response::Response {
         if let Some(report) = self.report {
-            tracing::error!("{:?}", report);
+            tracing::error!("{}", report);
         }
 
         (self.code, Json(dto::Error { error: self.error, message: self.message })).into_response()
     }
 }
 
-impl From<eyre::Report> for RouteError {
-    fn from(value: eyre::Report) -> Self {
-        Self {
-            code: StatusCode::INTERNAL_SERVER_ERROR,
-            error: "internal".into(),
-            message: "Something went wrong".into(),
-            report: Some(value),
-        }
+
+impl<T: Into<Box<dyn std::error::Error>>> From<T> for RouteError {
+    fn from(value: T) -> Self {
+        Self::internal(value.into())
     }
 }

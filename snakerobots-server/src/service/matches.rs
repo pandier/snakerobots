@@ -3,7 +3,7 @@ use eyre::Context;
 use snakerobots_shared::{Direction, dto};
 use sqlx::types::Uuid;
 
-use crate::{model::{MatchModel, MatchPlayerModel, matches::MatchRequestModel}, state::AppState};
+use crate::{model::{MatchModel, MatchPlayerModel, matches::MatchRequestModel}, service::error::ServiceResult, state::AppState};
 
 pub async fn get_match(app: &AppState, id: impl TryInto<Uuid>) -> eyre::Result<Option<MatchModel>> {
     let Ok(id) = id.try_into() else { return Ok(None); };
@@ -66,14 +66,14 @@ pub async fn get_match_requests(app: &AppState, user_id: Uuid) -> eyre::Result<V
         .await?)
 }
 
-pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> eyre::Result<Option<MatchRequestModel>> {
+pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> ServiceResult<MatchRequestModel> {
     let expires_at = Utc::now() + Duration::minutes(30);
     // TODO: Check if the existing request has expired
-    Ok(sqlx::query_as("INSERT INTO match_requests (sender_id, receiver_id, expires_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING *")
+    Ok(sqlx::query_as("INSERT INTO match_requests (sender_id, receiver_id, expires_at) VALUES ($1, $2, $3) RETURNING *")
         .bind(sender_id)
         .bind(receiver_id)
         .bind(expires_at)
-        .fetch_optional(&app.pg)
+        .fetch_one(&app.pg)
         .await?)
 }
 
@@ -84,4 +84,9 @@ pub async fn delete_match_request(app: &AppState, sender_id: Uuid, receiver_id: 
         .execute(&app.pg)
         .await?;
     Ok(result.rows_affected() > 0)
+}
+
+pub enum CreateMatchRequestError {
+    LimitReached,
+    AlreadyExists,
 }

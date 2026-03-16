@@ -4,7 +4,7 @@ pub mod model;
 pub mod service;
 pub mod state;
 
-use crate::state::AppState;
+use crate::state::{AppState, env_optional};
 use eyre::Context;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
@@ -22,12 +22,14 @@ async fn main() -> eyre::Result<()> {
 
     let state = Arc::new(AppState::new().await?);
 
-    tracing::info!("running migrations");
+    if env_optional("MIGRATE")?.unwrap_or(true) {
+        tracing::info!("running migrations");
 
-    sqlx::migrate!()
-        .run(&state.pg)
-        .await
-        .wrap_err("failed to run migrations")?;
+        sqlx::migrate!()
+            .run(&state.pg)
+            .await
+            .wrap_err("failed to run migrations")?;
+    }
 
     http::serve(state).await
 }

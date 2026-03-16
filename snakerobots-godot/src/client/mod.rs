@@ -97,6 +97,7 @@ impl SrClient {
     #[func]
     pub fn get_matches(&self, user_id: String) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
+            // TODO: injection o.o
             let res = self_gd.bind().client
                 .get(format!("/users/{}/matches", user_id))
                 .parse_response_json::<Vec<Match>>()
