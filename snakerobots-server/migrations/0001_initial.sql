@@ -47,3 +47,16 @@ CREATE FUNCTION enforce_match_request_limit() RETURNS TRIGGER AS $$
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER match_request_limit BEFORE INSERT ON match_requests
     FOR EACH ROW EXECUTE FUNCTION enforce_match_request_limit();
+
+-- Cleanup expired match request on insert
+CREATE FUNCTION cleanup_expired_match_request() RETURNS TRIGGER AS $$
+    BEGIN
+        DELETE FROM match_requests
+            WHERE sender_id = NEW.sender_id
+            AND receiver_id = NEW.receiver_id
+            AND expires_at <= now();
+        RETURN NEW;
+    END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER cleanup_expired_match_request BEFORE INSERT ON match_requests
+    FOR EACH ROW EXECUTE FUNCTION cleanup_expired_match_request();
