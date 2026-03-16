@@ -21,25 +21,29 @@ async fn main() -> eyre::Result<()> {
         )
         .init();
 
-    let state = Arc::new(AppState::new().await?);
+    let app = Arc::new(AppState::new().await?);
 
     if env_optional("MIGRATE")?.unwrap_or(true) {
         info!("running migrations");
 
         sqlx::migrate!()
-            .run(&state.pg)
+            .run(&app.pg)
             .await
             .wrap_err("failed to run migrations")?;
     }
 
-    tokio::spawn(cleanup_task(state.clone()));
+    tokio::spawn(cleanup_task(app.clone()));
 
-    http::serve(state).await
+    http::serve(app).await
 }
 
 async fn cleanup_task(app: Arc<AppState>) {
     loop {
-        sleep(Duration::from_mins(30)).await;
+        tokio::select! {
+            _ = sleep(Duration::from_mins(30)) => {},
+            _ = app.shutdown.cancelled() => break,
+        }
+
         debug!("executing cleanups");
         let _ = service::auth::cleanup_sessions(&app)
             .await

@@ -15,6 +15,8 @@ use tracing::info;
 use crate::{middleware::DevTokenHeader, state::AppState};
 
 pub async fn serve(state: Arc<AppState>) -> eyre::Result<()> {
+    let shutdown = state.shutdown.clone();
+
     let router = router(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
@@ -23,7 +25,9 @@ pub async fn serve(state: Arc<AppState>) -> eyre::Result<()> {
 
     info!("listening on {}", listener.local_addr()?);
 
-    axum::serve(listener, router).await?;
+    axum::serve(listener, router)
+        .with_graceful_shutdown(async move { shutdown.cancelled().await })
+        .await?;
 
     Ok(())
 }

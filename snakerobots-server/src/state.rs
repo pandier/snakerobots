@@ -3,11 +3,14 @@ use std::{env::VarError, str::FromStr};
 use chrono::Duration;
 use eyre::Context;
 use sqlx::{PgPool, postgres::PgPoolOptions};
+use tokio_util::sync::CancellationToken;
+use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct AppState {
     pub dev_token: Option<String>,
     pub session_timeout: Duration,
+    pub shutdown: CancellationToken,
     pub pg: PgPool,
 }
 
@@ -27,12 +30,43 @@ impl AppState {
             .await
             .wrap_err("failed to connect to Postgres database")?;
 
+        let shutdown = CancellationToken::new();
+        tokio::spawn(shutdown_signal(shutdown.clone()));
+
         Ok(AppState {
             dev_token,
             session_timeout,
+            shutdown,
             pg,
         })
     }
+}
+
+async fn shutdown_signal(cancel: CancellationToken) {
+    let ctrl_c = async {
+        match tokio::signal::ctrl_c().await {
+            Ok(()) => (),
+            Err(e) => error!("failed to listen for ctrl_c signal: {}", e),
+        }
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut s) => { s.recv().await; },
+            Err(e) => error!("failed to listen for terminate signal: {}", e),
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    info!("shutting down");
+    cancel.cancel();
 }
 
 pub fn env<T: FromStr>(key: &str) -> eyre::Result<T>
