@@ -36,8 +36,11 @@ async fn create_match_request(
         .wrap_err("failed to get user by username")?
         .ok_or_else(|| RouteError::new(StatusCode::BAD_REQUEST, "unknown_user", "Couldn't find a user with this username"))?;
 
-    let result = service::matches::create_match_request(&app, user_id, receiver.id).await;
+    if user_id == receiver.id {
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "self_request", "Can't send a match request to yourself"));
+    }
 
+    let result = service::matches::create_match_request(&app, user_id, receiver.id).await;
     match result {
         Ok(v) => Ok(Json(v.into())),
         Err(ServiceError::AlreadyExists(_)) => Err(RouteError::new(StatusCode::CONFLICT, "already_exists", "You have already requested a match with this user")),
