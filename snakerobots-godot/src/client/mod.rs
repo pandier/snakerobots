@@ -122,9 +122,9 @@ impl SrClient {
     }
 
     #[func]
-    pub fn create_match_request(&self, receiver_id: String) -> Gd<SrFuture> {
+    pub fn create_match_request(&self, username: String) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
-            let req = CreateMatchRequest { receiver_id };
+            let req = CreateMatchRequest { username };
             let res = self_gd.bind().client
                 .post("/match-requests")
                 .body_json(&req)?

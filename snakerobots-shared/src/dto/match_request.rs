@@ -12,7 +12,7 @@ pub struct MatchRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateMatchRequest {
-    pub receiver_id: String,
+    pub username: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

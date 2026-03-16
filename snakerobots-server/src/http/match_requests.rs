@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::{delete, get, post}};
+use eyre::Context;
 use snakerobots_shared::dto::match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest, MatchRequest};
 use sqlx::types::Uuid;
 
@@ -30,12 +31,12 @@ async fn create_match_request(
     AuthedUser(user_id): AuthedUser,
     Json(payload): Json<CreateMatchRequest>,
 ) -> RouteResult<Json<MatchRequest>> {
-    let Ok(receiver_id) = Uuid::try_from(payload.receiver_id) else {
-        return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
-    };
+    let receiver = service::user::get_user_by_username(&app, &payload.username)
+        .await
+        .wrap_err("failed to get user by username")?
+        .ok_or_else(|| RouteError::new(StatusCode::BAD_REQUEST, "unknown_user", "Couldn't find a user with this username"))?;
 
-    // TODO: Check if user exists
-    let result = service::matches::create_match_request(&app, user_id, receiver_id).await;
+    let result = service::matches::create_match_request(&app, user_id, receiver.id).await;
 
     match result {
         Ok(v) => Ok(Json(v.into())),
