@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["snakerobots-godot", "snakerobots-server", "snakerobots-shared"]
+members = ["snakerobots-godot", "snakerobots-server", "snakerobots-shared", "snakerobots-shared-backend", "snakerobots-worker"]

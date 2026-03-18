@@ -6,7 +6,7 @@ pub use math::{Direction, Point, Size};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum GameResult {
     Win { winner: usize },
     Tie,
