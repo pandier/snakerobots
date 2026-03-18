@@ -13,14 +13,16 @@ use snakerobots_shared::{
 #[class(init, base=RefCounted)]
 pub struct GameSnake {
     #[var]
-    points: Array<Vector2i>,
+    pub points: Array<Vector2i>,
+    #[var]
+    pub is_alive: bool,
 }
 
 #[godot_api]
 impl GameSnake {
     #[func]
-    pub fn create(points: Array<Vector2i>) -> Gd<Self> {
-        Gd::from_object(GameSnake { points })
+    pub fn create(points: Array<Vector2i>, is_alive: bool) -> Gd<Self> {
+        Gd::from_object(GameSnake { points, is_alive })
     }
 
     #[func]
@@ -159,7 +161,6 @@ impl GameTimeline {
     fn convert_snakes<'a>(time: usize, snakes: &Vec<GameTimelineSnake>) -> Array<Gd<GameSnake>> {
         snakes
             .iter()
-            .filter(|snake| snake.is_alive(time))
             .map(|snake| {
                 GameSnake::create(
                     snake
@@ -168,6 +169,7 @@ impl GameTimeline {
                         .iter()
                         .map(|point| Vector2i::new(point.x, point.y))
                         .collect::<Array<_>>(),
+                    snake.is_alive(time),
                 )
             })
             .collect::<Array<_>>()
