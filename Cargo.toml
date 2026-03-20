@@ -1,3 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["snakerobots-godot", "snakerobots-server", "snakerobots-shared"]
+members = [
+    "crates/godot",
+    "crates/server",
+    "crates/shared"
+]

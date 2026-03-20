@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 dev-api = []
 
 [dependencies]
-snakerobots-shared = { path = "../snakerobots-shared" }
+snakerobots-shared = { path = "../shared" }
 godot = "0.4.5"
 smol = "2.0"
 rand = "0.10"
