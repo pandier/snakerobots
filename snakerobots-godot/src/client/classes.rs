@@ -90,9 +90,9 @@ impl SrMatchPlayer {
 #[class(no_init, base=RefCounted)]
 pub struct SrMatchRequest {
     #[var]
-    pub receiver_id: GString,
+    pub receiver: Gd<SrUser>,
     #[var]
-    pub sender_id: GString,
+    pub sender: Gd<SrUser>,
     #[var]
     pub created_at: i64,
     #[var]
@@ -103,8 +103,8 @@ pub struct SrMatchRequest {
 impl SrMatchRequest {
     pub fn create(req: &MatchRequest) -> Gd<Self> {
         Gd::from_object(Self {
-            receiver_id: req.receiver_id.to_godot(),
-            sender_id: req.sender_id.to_godot(),
+            receiver: SrUser::create(&req.receiver),
+            sender: SrUser::create(&req.sender),
             created_at: req.created_at.timestamp(),
             expires_at: req.expires_at.timestamp(),
         })

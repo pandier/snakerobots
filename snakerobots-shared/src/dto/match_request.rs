@@ -1,11 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::dto::User;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchRequest {
-    pub receiver_id: String,
-    pub sender_id: String,
+    pub receiver: User,
+    pub sender: User,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
 }

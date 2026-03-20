@@ -17,6 +17,7 @@ tower = "0.5"
 sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio", "uuid"] }
 
 serde = { version = "1.0", features = ["derive"] }
+uuid = { version = "1.22", features = ["serde"] }
 jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 chrono = { version = "0.4", features = ["serde"] }
 argon2 = "0.5"

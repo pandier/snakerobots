@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
-use snakerobots_shared::{Direction, GameResult, dto::{MatchRequest, game::{Match, MatchPlayer}}};
-use sqlx::{Row, postgres::PgRow, types::Uuid};
+use snakerobots_shared::{Direction, GameResult, dto::{MatchPlayer, MatchRequest, game::Match}};
+use sqlx::{Row, postgres::PgRow, types::{Json, Uuid}};
+
+use crate::model::PartialUserModel;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct MatchModel {
@@ -53,8 +55,8 @@ impl sqlx::FromRow<'_, PgRow> for MatchPlayerModel {
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct MatchRequestModel {
-    pub sender_id: Uuid,
-    pub receiver_id: Uuid,
+    pub sender: Json<PartialUserModel>,
+    pub receiver: Json<PartialUserModel>,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
 }
@@ -62,8 +64,8 @@ pub struct MatchRequestModel {
 impl From<MatchRequestModel> for MatchRequest {
     fn from(value: MatchRequestModel) -> Self {
         Self {
-            sender_id: value.sender_id.to_string(),
-            receiver_id: value.receiver_id.to_string(),
+            sender: value.sender.0.into(),
+            receiver: value.receiver.0.into(),
             created_at: value.created_at,
             expires_at: value.expires_at,
         }

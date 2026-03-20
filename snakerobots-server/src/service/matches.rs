@@ -60,35 +60,60 @@ pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>) ->
 }
 
 pub async fn get_match_requests(app: &AppState, user_id: Uuid) -> eyre::Result<Vec<MatchRequestModel>> {
-    Ok(sqlx::query_as("SELECT * FROM match_requests WHERE (sender_id = $1 OR receiver_id = $1) AND expires_at > now()")
-        .bind(user_id)
-        .fetch_all(&app.pg)
-        .await?)
+    Ok(sqlx::query_as!(
+        MatchRequestModel,
+        r#"
+            SELECT
+                r.created_at, r.expires_at,
+                row_to_json(us) AS "sender!: _",
+                row_to_json(ur) AS "receiver!: _"
+            FROM match_requests r
+            INNER JOIN users us ON r.sender_id = us.id
+            INNER JOIN users ur ON r.receiver_id = ur.id
+            WHERE (sender_id = $1 OR receiver_id = $1) AND expires_at > now()
+        "#,
+        user_id
+    ).fetch_all(&app.pg).await?)
 }
 
 pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> ServiceResult<MatchRequestModel> {
     let expires_at = Utc::now() + Duration::minutes(30);
-    // TODO: Check if the existing request has expired
-    Ok(sqlx::query_as("INSERT INTO match_requests (sender_id, receiver_id, expires_at) VALUES ($1, $2, $3) RETURNING *")
-        .bind(sender_id)
-        .bind(receiver_id)
-        .bind(expires_at)
-        .fetch_one(&app.pg)
-        .await?)
+
+    Ok(sqlx::query_as!(
+        MatchRequestModel,
+        r#"
+            WITH inserted AS (
+                INSERT INTO match_requests (sender_id, receiver_id, expires_at) 
+                VALUES ($1, $2, $3)
+                RETURNING *
+            )
+            SELECT
+                r.created_at, r.expires_at,
+                row_to_json(us) AS "sender!: _",
+                row_to_json(ur) AS "receiver!: _"
+            FROM inserted r
+            INNER JOIN users us ON r.sender_id = us.id
+            INNER JOIN users ur ON r.receiver_id = ur.id
+        "#,
+        sender_id,
+        receiver_id,
+        expires_at,
+    ).fetch_one(&app.pg).await?)
 }
 
 pub async fn delete_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> eyre::Result<bool> {
-    let result = sqlx::query("DELETE FROM match_requests WHERE sender_id = $1 AND receiver_id = $2")
-        .bind(sender_id)
-        .bind(receiver_id)
-        .execute(&app.pg)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM match_requests WHERE sender_id = $1 AND receiver_id = $2",
+        sender_id, receiver_id
+    ).execute(&app.pg).await?;
+
     Ok(result.rows_affected() > 0)
 }
 
 pub async fn cleanup_match_requests(app: &AppState) -> ServiceResult<()> {
-    sqlx::query("DELETE FROM match_requests WHERE expires_at <= now()")
+    sqlx::query!("DELETE FROM match_requests WHERE expires_at <= now()")
         .execute(&app.pg)
         .await?;
+
     Ok(())
 }

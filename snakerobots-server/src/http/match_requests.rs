@@ -43,7 +43,7 @@ async fn create_match_request(
     let result = service::matches::create_match_request(&app, user_id, receiver.id).await;
     match result {
         Ok(v) => Ok(Json(v.into())),
-        Err(ServiceError::AlreadyExists(_)) => Err(RouteError::new(StatusCode::CONFLICT, "already_exists", "You have already requested a match with this user")),
+        Err(ServiceError::AlreadyExists(_)) => Err(RouteError::new(StatusCode::CONFLICT, "already_exists", "You already requested a match with this user")),
         Err(ServiceError::LimitReached(_)) => Err(RouteError::new(StatusCode::CONFLICT, "limit_reached", "You reached the limit for the number amount of match requests")),
         Err(e) => Err(e.into())
     }
