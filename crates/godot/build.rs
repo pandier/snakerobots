@@ -2,7 +2,7 @@ use std::env;
 
 fn main() {
     let _ = dotenvy::dotenv();
-    let _ = dotenvy::from_path("../deployment/dev/.env");
+    let _ = dotenvy::from_path("../../deployment/dev/.env");
 
     expose_env("API_URL");
     expose_env("DEV_API_URL");
