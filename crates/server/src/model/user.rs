@@ -1,9 +1,11 @@
 use chrono::{DateTime, Utc};
+use rowplus_derive::RowPlus;
 use serde::Deserialize;
 use snakerobots_shared::dto;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, RowPlus)]
+#[rowplus(alias = "users")]
 pub struct UserModel {
     pub id: Uuid,
     pub username: String,
@@ -21,7 +23,8 @@ impl From<UserModel> for dto::User {
     }
 
 }
-#[derive(Debug, Clone, sqlx::FromRow, Deserialize)]
+#[derive(Debug, Clone, RowPlus, Deserialize)]
+#[rowplus(alias = "users")]
 pub struct PartialUserModel {
     pub id: Uuid,
     pub username: String,

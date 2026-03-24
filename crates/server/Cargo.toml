@@ -15,6 +15,8 @@ tower-http = { version = "0.6", features = ["trace", "validate-request"] }
 tower = "0.5"
 
 sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio", "uuid"] }
+rowplus = { path = "../rowplus" }
+rowplus-derive = { path = "../rowplus-derive" }
 
 serde = { version = "1.0", features = ["derive"] }
 uuid = { version = "1.22", features = ["serde"] }

@@ -8,17 +8,15 @@ CREATE TABLE users (
 CREATE TABLE matches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     seed BIGINT NOT NULL,
-    winner_index INT,
+    winner UUID,
     aborted BOOL NOT NULL,
     played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE match_players (
-    "index" INT NOT NULL,
+    id SERIAL PRIMARY KEY,
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    moves TEXT NOT NULL,
-    PRIMARY KEY ("index", match_id)
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE match_requests (

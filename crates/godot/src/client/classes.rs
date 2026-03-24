@@ -1,7 +1,5 @@
 use godot::prelude::*;
-use snakerobots_shared::{Size, dto::{Match, MatchPlayer, MatchRequest, User}, logic::{self, Game, Player, robot::replay::ReplayRobot, standard::{STANDARD_APPLE_COUNT, STANDARD_HEIGHT, STANDARD_WIDTH}}};
-
-use crate::game::GameTimeline;
+use snakerobots_shared::dto::{Match, MatchRequest, User};
 
 #[derive(GodotClass)]
 #[class(no_init, base=RefCounted)]
@@ -36,7 +34,7 @@ pub struct SrMatch {
     #[var]
     pub played_at: i64,
     #[var]
-    pub players: Array<Gd<SrMatchPlayer>>,
+    pub players: Array<Option<Gd<SrUser>>>,
 }
 
 #[godot_api]
@@ -46,44 +44,29 @@ impl SrMatch {
             seed: match_.seed as i64,
             id: match_.id.to_godot(),
             played_at: match_.played_at.timestamp(),
-            players: match_.players.iter().map(SrMatchPlayer::create).collect(),
+            players: match_.players.iter().map(|player| player.as_ref().map(SrUser::create)).collect(),
             match_
         })
     }
 
     // TODO: asynchronous
-    #[func]
-    pub fn create_timeline(&self) -> Gd<GameTimeline> {
-        let players = logic::standard::create_standard_snakes()
-            .into_iter()
-            .enumerate()
-            .map(|(i, snake)| {
-                let robot = ReplayRobot::new(self.match_.players[i].moves.clone());
-                Player::new(snake, Box::new(robot))
-            })
-            .collect();
-        let size = Size::new(STANDARD_WIDTH, STANDARD_HEIGHT);
-        let game = Game::new(size, STANDARD_APPLE_COUNT, self.match_.seed, players)
-            .expect("invalid game layout");
-        let timeline = GameTimeline::run_game(game);
-        Gd::from_object(timeline)
-    }
-}
-
-#[derive(GodotClass)]
-#[class(no_init, base=RefCounted)]
-pub struct SrMatchPlayer {
-    #[var]
-    pub user_id: Variant,
-}
-
-#[godot_api]
-impl SrMatchPlayer {
-    pub fn create(req: &MatchPlayer) -> Gd<Self> {
-        Gd::from_object(Self {
-            user_id: req.user_id.as_ref().map(ToGodot::to_variant).unwrap_or_else(Variant::nil)
-        })
-    }
+    // TODO:
+    // #[func]
+    // pub fn create_timeline(&self) -> Gd<GameTimeline> {
+    //     let players = logic::standard::create_standard_snakes()
+    //         .into_iter()
+    //         .enumerate()
+    //         .map(|(i, snake)| {
+    //             let robot = ReplayRobot::new(self.match_.players[i].moves.clone());
+    //             Player::new(snake, Box::new(robot))
+    //         })
+    //         .collect();
+    //     let size = Size::new(STANDARD_WIDTH, STANDARD_HEIGHT);
+    //     let game = Game::new(size, STANDARD_APPLE_COUNT, self.match_.seed, players)
+    //         .expect("invalid game layout");
+    //     let timeline = GameTimeline::run_game(game);
+    //     Gd::from_object(timeline)
+    // }
 }
 
 #[derive(GodotClass)]

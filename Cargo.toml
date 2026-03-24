@@ -3,5 +3,6 @@ resolver = "3"
 members = [
     "crates/godot",
     "crates/server",
-    "crates/shared"
-]
+    "crates/shared",
+    "crates/rowplus"
+, "crates/rowplus-derive"]

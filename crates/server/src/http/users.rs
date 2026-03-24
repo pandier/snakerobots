@@ -5,7 +5,6 @@ use crate::state::AppState;
 use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
-use eyre::Context;
 use snakerobots_shared::dto::User;
 use snakerobots_shared::dto::game::{Match};
 use std::sync::Arc;
@@ -32,11 +31,10 @@ async fn get_user_matches(
     Path(user_id): Path<String>,
 ) -> RouteResult<Json<Vec<Match>>> {
     let matches = service::matches::get_matches_by_user(&app, user_id)
-        .await
-        .wrap_err("failed to get matches by user")?;
-    let matches = futures::future::try_join_all(
-        matches.into_iter().map(|m| service::matches::resolve_match(&app, m))
-    ).await?;
+        .await?
+        .into_iter()
+        .map(|m| m.into())
+        .collect();
     Ok(Json(matches))
 }
 

@@ -17,11 +17,13 @@ async fn run_game(app: Arc<AppState>, player1: Uuid, player2: Uuid) -> eyre::Res
     let game = tokio::task::spawn_blocking(run_game_blocking).await?
         .wrap_err("failed to run game")?;
 
-    let mut snakes = Vec::new();
-    snakes.push((game.snakes.get(0).ok_or_else(|| eyre::eyre!("missing snake for player 1"))?, player1));
-    snakes.push((game.snakes.get(1).ok_or_else(|| eyre::eyre!("missing snake for player 2"))?, player2));
+    let winner = match game.result.winner() {
+        Some(0) => Some(player1),
+        Some(1) => Some(player2),
+        _ => None,
+    };
 
-    service::matches::create_match(&app, game.seed, game.result.winner(), snakes).await
+    service::matches::create_match(&app, game.seed, winner, vec![player1, player2]).await
         .wrap_err("failed to create match")?;
 
     Ok(())

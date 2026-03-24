@@ -2431,6 +2431,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "rowplus"
+version = "0.1.0"
+dependencies = [
+ "sqlx",
+]
+
+[[package]]
+name = "rowplus-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "rowplus",
+ "sqlx",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "rsa"
 version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2786,6 +2803,8 @@ dependencies = [
  "futures",
  "jsonwebtoken",
  "rand 0.10.0",
+ "rowplus",
+ "rowplus-derive",
  "serde",
  "snakerobots-shared",
  "sqlx",

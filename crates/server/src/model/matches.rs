@@ -1,62 +1,65 @@
 use chrono::{DateTime, Utc};
-use snakerobots_shared::{Direction, GameResult, dto::{MatchPlayer, MatchRequest, game::Match}};
-use sqlx::{Row, postgres::PgRow, types::{Json, Uuid}};
+use rowplus_derive::RowPlus;
+use snakerobots_shared::dto::{self, MatchRequest, User};
+use sqlx::types::Uuid;
 
 use crate::model::PartialUserModel;
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, RowPlus)]
+#[rowplus(alias = "matches")]
 pub struct MatchModel {
     pub id: Uuid,
     pub seed: i64,
-    pub winner_index: Option<i32>,
+    pub winner: Option<Uuid>,
     pub aborted: bool,
     pub played_at: DateTime<Utc>,
 }
 
 impl MatchModel {
-    pub fn into_dto(self, players: Vec<MatchPlayerModel>) -> Match {
-        Match {
-            id: self.id.to_string(),
-            seed: self.seed as u64,
-            players: players.into_iter().map(|p| MatchPlayer::from(p)).collect(),
-            played_at: self.played_at,
-            result: if self.aborted { GameResult::Abort } else { match self.winner_index {
-                Some(winner) => GameResult::Win { winner: winner as usize },
-                None => GameResult::Tie,
-            }},
-        }
+    pub fn with_players(self, players: Vec<MatchPlayerModel>) -> MatchWithPlayersModel {
+        MatchWithPlayersModel { match_: self, players }
+    }
+}
+
+#[derive(Debug, Clone, RowPlus)]
+#[rowplus(alias = "match_players")]
+pub struct MatchPlayerModel {
+    pub id: i32,
+    #[rowplus(nested)]
+    pub user: Option<PartialUserModel>,
+}
+
+impl From<MatchPlayerModel> for Option<User> {
+    fn from(value: MatchPlayerModel) -> Self {
+        value.user.map(|user| user.into())
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct MatchPlayerModel {
-    pub user_id: Option<Uuid>,
-    pub moves: Vec<Direction>,
+pub struct MatchWithPlayersModel {
+    pub match_: MatchModel,
+    pub players: Vec<MatchPlayerModel>,
 }
 
-impl From<MatchPlayerModel> for MatchPlayer {
-    fn from(value: MatchPlayerModel) -> Self {
+impl From<MatchWithPlayersModel> for dto::Match {
+    fn from(value: MatchWithPlayersModel) -> Self {
         Self {
-            user_id: value.user_id.map(|u| u.to_string()),
-            moves: value.moves,
+            id: value.match_.id.to_string(),
+            seed: value.match_.seed as u64,
+            players: value.players.into_iter().map(|player| player.into()).collect(),
+            played_at: value.match_.played_at,
+            winner: value.match_.winner.map(|uuid| uuid.to_string()),
         }
     }
 }
 
-impl sqlx::FromRow<'_, PgRow> for MatchPlayerModel {
-    fn from_row(row: &PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            user_id: row.try_get("user_id")?,
-            moves: Direction::try_vec_from_string(row.try_get("moves")?)
-                .map_err(|e| sqlx::Error::ColumnDecode { index: "moves".into(), source: e.into() })?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, RowPlus)]
+#[rowplus(alias = "match_requests")]
 pub struct MatchRequestModel {
-    pub sender: Json<PartialUserModel>,
-    pub receiver: Json<PartialUserModel>,
+    #[rowplus(nested)]
+    pub sender: PartialUserModel,
+    #[rowplus(nested)]
+    pub receiver: PartialUserModel,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
 }
@@ -64,8 +67,8 @@ pub struct MatchRequestModel {
 impl From<MatchRequestModel> for MatchRequest {
     fn from(value: MatchRequestModel) -> Self {
         Self {
-            sender: value.sender.0.into(),
-            receiver: value.receiver.0.into(),
+            sender: value.sender.into(),
+            receiver: value.receiver.into(),
             created_at: value.created_at,
             expires_at: value.expires_at,
         }

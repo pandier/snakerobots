@@ -1,104 +1,145 @@
 use chrono::{Duration, Utc};
-use eyre::Context;
-use snakerobots_shared::{Direction, dto};
+use rowplus::query_plus;
+use rowplus_derive::RowPlus;
 use sqlx::types::Uuid;
 
-use crate::{model::{MatchModel, MatchPlayerModel, matches::MatchRequestModel}, service::error::ServiceResult, state::AppState};
+use crate::{model::{MatchModel, MatchPlayerModel, MatchWithPlayersModel, matches::MatchRequestModel}, service::error::ServiceResult, state::AppState};
 
-pub async fn get_match(app: &AppState, id: impl TryInto<Uuid>) -> eyre::Result<Option<MatchModel>> {
+#[derive(Debug, Clone, RowPlus)]
+#[rowplus(alias = "match_players")]
+struct PlayerWithMatchRow {
+    #[rowplus(flatten)]
+    pub player: MatchPlayerModel,
+    #[rowplus(nested, alias = "match")]
+    pub match_: MatchModel,
+}
+
+pub async fn get_match(app: &AppState, id: impl TryInto<Uuid>) -> ServiceResult<Option<MatchWithPlayersModel>> {
     let Ok(id) = id.try_into() else { return Ok(None); };
-    Ok(sqlx::query_as("SELECT * FROM matches WHERE id = $1")
-        .bind(id)
-        .fetch_optional(&app.pg)
-        .await?)
+
+    let rows = query_plus!(
+        PlayerWithMatchRow,
+        r#"
+            SELECT {} FROM matches match
+            JOIN match_players ON match_players.match_id = match.id AND match.id = $1
+            JOIN users user ON user.id = match_players.user_id
+        "#
+    )
+    .bind(id)
+    .fetch_all(&app.pg)
+    .await?;
+
+    let mut result: Option<MatchWithPlayersModel> = None;
+
+    for row in rows {
+        if let Some(match_) = &mut result {
+            match_.players.push(row.player);
+            continue;
+        }
+        result = Some(row.match_.with_players(vec![row.player]));
+    }
+
+    Ok(result)
 }
 
-pub async fn resolve_match(app: &AppState, match_: MatchModel) -> eyre::Result<dto::Match> {
-    let players = get_match_players(&app, match_.id.clone()).await.wrap_err("failed to get match players")?;
-    Ok(match_.into_dto(players))
-}
-
-pub async fn create_match(app: &AppState, seed: u64, winner: Option<usize>, snakes: Vec<(&dto::GameSnake, Uuid)>) -> eyre::Result<MatchModel> {
+pub async fn create_match(app: &AppState, seed: u64, winner: Option<Uuid>, players: Vec<Uuid>) -> ServiceResult<()> {
     let mut tx = app.pg.begin().await?;
 
-    let model: MatchModel = sqlx::query_as("INSERT INTO matches (seed, winner_index, aborted) VALUES ($1, $2, $3) RETURNING *")
-        .bind(seed as i64)
-        .bind(winner.map(|index| index as i32))
-        .bind(false)
-        .fetch_one(&mut *tx)
-        .await?;
+    let model = query_plus!(
+        MatchModel,
+        "INSERT INTO matches (seed, winner, aborted) VALUES ($1, $2, $3) RETURNING {}"
+    )
+    .bind(seed as i64)
+    .bind(winner)
+    .bind(false)
+    .fetch_one(&mut *tx)
+    .await?;
 
-    for (index, (snake, user_id)) in snakes.into_iter().enumerate() {
-        sqlx::query("INSERT INTO match_players (\"index\", match_id, user_id, moves) VALUES ($1, $2, $3, $4)")
-            .bind(index as i32)
+    for user_id in players.into_iter() {
+        sqlx::query("INSERT INTO match_players (match_id, user_id) VALUES ($1, $2)")
             .bind(model.id)
             .bind(user_id)
-            .bind(Direction::vec_to_string(&snake.moves))
             .execute(&mut *tx)
             .await?;
     }
 
     tx.commit().await?;
 
-    Ok(model)
+    Ok(())
 }
 
-pub async fn get_match_players(app: &AppState, id: impl TryInto<Uuid>) -> eyre::Result<Vec<MatchPlayerModel>> {
-    let Ok(id) = id.try_into() else { return Ok(vec![]); };
-    Ok(sqlx::query_as("SELECT * FROM match_players WHERE match_id = $1")
-        .bind(id)
-        .fetch_all(&app.pg)
-        .await?)
-}
-
-pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>) -> eyre::Result<Vec<MatchModel>> {
+pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>) -> ServiceResult<Vec<MatchWithPlayersModel>> {
     let Ok(user_id) = user_id.try_into() else { return Ok(vec![]); };
-    Ok(sqlx::query_as("SELECT m.* FROM matches m INNER JOIN match_players p ON m.id = p.match_id AND p.user_id = $1")
-        .bind(user_id)
-        .fetch_all(&app.pg)
-        .await?)
+    let rows = query_plus!(
+        PlayerWithMatchRow,
+        r#"
+            SELECT {} FROM match_players filter
+            JOIN matches "match" ON "match".id = filter.match_id
+            JOIN match_players ON match_players.match_id = "match".id
+            JOIN users "user" ON "user".id = match_players.user_id
+            WHERE filter.user_id = $1
+            ORDER BY "match".id
+        "#
+    )
+    .bind(user_id)
+    .fetch_all(&app.pg)
+    .await?;
+
+    let mut result: Vec<MatchWithPlayersModel> = Vec::new();
+
+    for row in rows {
+        if let Some(last) = result.last_mut() {
+            if last.match_.id == row.match_.id {
+                last.players.push(row.player);
+                continue;
+            }
+        }
+        result.push(row.match_.with_players(vec![row.player]));
+    }
+
+    Ok(result)
 }
 
 pub async fn get_match_requests(app: &AppState, user_id: Uuid) -> eyre::Result<Vec<MatchRequestModel>> {
-    Ok(sqlx::query_as!(
-        MatchRequestModel,
-        r#"
-            SELECT
-                r.created_at, r.expires_at,
-                row_to_json(us) AS "sender!: _",
-                row_to_json(ur) AS "receiver!: _"
-            FROM match_requests r
-            INNER JOIN users us ON r.sender_id = us.id
-            INNER JOIN users ur ON r.receiver_id = ur.id
-            WHERE (sender_id = $1 OR receiver_id = $1) AND expires_at > now()
-        "#,
-        user_id
-    ).fetch_all(&app.pg).await?)
+    Ok(
+        query_plus!(
+            MatchRequestModel,
+            r#"
+                SELECT {} FROM match_requests
+                INNER JOIN users sender ON sender.id = match_requests.sender_id
+                INNER JOIN users receiver ON receiver.id = match_requests.receiver_id
+                WHERE (match_requests.sender_id = $1 OR match_requests.receiver_id = $1) AND match_requests.expires_at > now()
+            "#
+        )
+        .bind(user_id)
+        .fetch_all(&app.pg)
+        .await?
+    )
 }
 
 pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> ServiceResult<MatchRequestModel> {
     let expires_at = Utc::now() + Duration::minutes(30);
 
-    Ok(sqlx::query_as!(
-        MatchRequestModel,
-        r#"
-            WITH inserted AS (
-                INSERT INTO match_requests (sender_id, receiver_id, expires_at) 
-                VALUES ($1, $2, $3)
-                RETURNING *
-            )
-            SELECT
-                r.created_at, r.expires_at,
-                row_to_json(us) AS "sender!: _",
-                row_to_json(ur) AS "receiver!: _"
-            FROM inserted r
-            INNER JOIN users us ON r.sender_id = us.id
-            INNER JOIN users ur ON r.receiver_id = ur.id
-        "#,
-        sender_id,
-        receiver_id,
-        expires_at,
-    ).fetch_one(&app.pg).await?)
+    Ok(
+        query_plus!(
+            MatchRequestModel,
+            r#"
+                WITH inserted AS (
+                    INSERT INTO match_requests (sender_id, receiver_id, expires_at) 
+                    VALUES ($1, $2, $3)
+                    RETURNING *
+                )
+                SELECT {} FROM inserted match_requests
+                INNER JOIN users sender ON sender.id = match_requests.sender_id
+                INNER JOIN users receiver ON receiver.id = match_requests.receiver_id
+            "#
+        )
+        .bind(sender_id)
+        .bind(receiver_id)
+        .bind(expires_at)
+        .fetch_one(&app.pg)
+        .await?
+    )
 }
 
 pub async fn delete_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> eyre::Result<bool> {
