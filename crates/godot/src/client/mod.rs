@@ -5,7 +5,7 @@ mod middleware;
 use arc_swap::ArcSwap;
 use godot::prelude::*;
 use snakerobots_shared::dto::{
-    Match, MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}
+    DefaultGameReplay, Match, MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}
 };
 use std::sync::Arc;
 use surf::{
@@ -105,6 +105,30 @@ impl SrClient {
             Ok(res.into_iter()
                 .map(|req| SrMatch::create(req))
                 .collect::<Array<_>>())
+        })
+    }
+
+    #[func]
+    pub fn get_match(&self, match_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            // TODO: injection o.o
+            let res = self_gd.bind().client
+                .get(format!("/matches/{}", match_id))
+                .parse_response_json::<Match>()
+                .await?;
+            Ok(SrMatch::create(res))
+        })
+    }
+
+    #[func]
+    pub fn get_match_replay(&self, match_id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            // TODO: injection o.o
+            let res = self_gd.bind().client
+                .get(format!("/matches/{}/replay", match_id))
+                .parse_response_json::<DefaultGameReplay>()
+                .await?;
+            Ok(SrMatchReplay::create(res))
         })
     }
 

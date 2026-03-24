@@ -1,7 +1,8 @@
 use chrono::{Duration, Utc};
 use rowplus::query_plus;
 use rowplus_derive::RowPlus;
-use sqlx::types::Uuid;
+use snakerobots_shared::dto;
+use sqlx::types::{Json, Uuid};
 
 use crate::{model::{MatchModel, MatchPlayerModel, MatchWithPlayersModel, matches::MatchRequestModel}, service::error::ServiceResult, state::AppState};
 
@@ -22,7 +23,7 @@ pub async fn get_match(app: &AppState, id: impl TryInto<Uuid>) -> ServiceResult<
         r#"
             SELECT {} FROM matches match
             JOIN match_players ON match_players.match_id = match.id AND match.id = $1
-            JOIN users user ON user.id = match_players.user_id
+            JOIN users "user" ON "user".id = match_players.user_id
         "#
     )
     .bind(id)
@@ -40,32 +41,6 @@ pub async fn get_match(app: &AppState, id: impl TryInto<Uuid>) -> ServiceResult<
     }
 
     Ok(result)
-}
-
-pub async fn create_match(app: &AppState, seed: u64, winner: Option<Uuid>, players: Vec<Uuid>) -> ServiceResult<()> {
-    let mut tx = app.pg.begin().await?;
-
-    let model = query_plus!(
-        MatchModel,
-        "INSERT INTO matches (seed, winner, aborted) VALUES ($1, $2, $3) RETURNING {}"
-    )
-    .bind(seed as i64)
-    .bind(winner)
-    .bind(false)
-    .fetch_one(&mut *tx)
-    .await?;
-
-    for user_id in players.into_iter() {
-        sqlx::query("INSERT INTO match_players (match_id, user_id) VALUES ($1, $2)")
-            .bind(model.id)
-            .bind(user_id)
-            .execute(&mut *tx)
-            .await?;
-    }
-
-    tx.commit().await?;
-
-    Ok(())
 }
 
 pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>) -> ServiceResult<Vec<MatchWithPlayersModel>> {
@@ -98,6 +73,52 @@ pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>) ->
     }
 
     Ok(result)
+}
+
+pub async fn get_match_replay(app: &AppState, id: impl TryInto<Uuid>) -> ServiceResult<Option<dto::DefaultGameReplay>> {
+    let Ok(id) = id.try_into() else { return Ok(None); };
+
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        replay: Json<dto::DefaultGameReplay>,
+    }
+
+    let row: Option<Row> = sqlx::query_as("SELECT replay FROM matches WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&app.pg)
+        .await?;
+
+    Ok(row.map(|row| row.replay.0))
+} 
+
+pub async fn create_match(app: &AppState, replay: dto::GameReplay<Option<Uuid>>) -> ServiceResult<()> {
+    let mut tx = app.pg.begin().await?;
+
+    let winner = replay.winner().and_then(|snake| snake.metadata);
+
+    let model = query_plus!(
+        MatchModel,
+        "INSERT INTO matches (winner, aborted, replay) VALUES ($1, $2, $3) RETURNING {}"
+    )
+    .bind(winner)
+    .bind(false)
+    .bind(Json(replay.clone()))
+    .fetch_one(&mut *tx)
+    .await?;
+
+    for snake in replay.snakes {
+        if let Some(user_id) = snake.metadata {
+            sqlx::query("INSERT INTO match_players (match_id, user_id) VALUES ($1, $2)")
+                .bind(model.id)
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+    }
+
+    tx.commit().await?;
+
+    Ok(())
 }
 
 pub async fn get_match_requests(app: &AppState, user_id: Uuid) -> eyre::Result<Vec<MatchRequestModel>> {

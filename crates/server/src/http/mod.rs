@@ -2,6 +2,7 @@ mod auth;
 mod error;
 mod extract;
 mod match_requests;
+mod matches;
 mod users;
 
 use std::sync::Arc;
@@ -36,6 +37,7 @@ fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .nest("/auth", auth::router())
         .nest("/users", users::router())
+        .nest("/matches", matches::router())
         .nest("/match-requests", match_requests::router())
         .layer(tower::util::option_layer(state.dev_token.clone().map(|dev_token| ValidateRequestHeaderLayer::custom(DevTokenHeader(dev_token)))))
         .layer(ServiceBuilder::new()

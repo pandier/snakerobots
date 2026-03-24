@@ -9,7 +9,6 @@ use crate::model::PartialUserModel;
 #[rowplus(alias = "matches")]
 pub struct MatchModel {
     pub id: Uuid,
-    pub seed: i64,
     pub winner: Option<Uuid>,
     pub aborted: bool,
     pub played_at: DateTime<Utc>,
@@ -45,7 +44,6 @@ impl From<MatchWithPlayersModel> for dto::Match {
     fn from(value: MatchWithPlayersModel) -> Self {
         Self {
             id: value.match_.id.to_string(),
-            seed: value.match_.seed as u64,
             players: value.players.into_iter().map(|player| player.into()).collect(),
             played_at: value.match_.played_at,
             winner: value.match_.winner.map(|uuid| uuid.to_string()),

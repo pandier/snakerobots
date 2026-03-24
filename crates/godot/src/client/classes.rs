@@ -1,5 +1,7 @@
 use godot::prelude::*;
-use snakerobots_shared::dto::{Match, MatchRequest, User};
+use snakerobots_shared::dto::{DefaultGameReplay, Match, MatchRequest, User};
+
+use crate::game::GameTimeline;
 
 #[derive(GodotClass)]
 #[class(no_init, base=RefCounted)]
@@ -26,11 +28,10 @@ impl SrUser {
 #[derive(GodotClass)]
 #[class(no_init, base=RefCounted)]
 pub struct SrMatch {
-    match_: Match,
     #[var]
     pub id: GString,
     #[var]
-    pub seed: i64,
+    pub winner_id: Variant,
     #[var]
     pub played_at: i64,
     #[var]
@@ -41,32 +42,34 @@ pub struct SrMatch {
 impl SrMatch {
     pub fn create(match_: Match) -> Gd<Self> {
         Gd::from_object(Self {
-            seed: match_.seed as i64,
             id: match_.id.to_godot(),
+            winner_id: match_.winner.as_ref().map(|id| id.to_variant()).unwrap_or_else(Variant::nil),
             played_at: match_.played_at.timestamp(),
             players: match_.players.iter().map(|player| player.as_ref().map(SrUser::create)).collect(),
-            match_
+        })
+    }
+}
+
+#[derive(GodotClass)]
+#[class(no_init, base=RefCounted)]
+pub struct SrMatchReplay {
+    replay: DefaultGameReplay,
+}
+
+#[godot_api]
+impl SrMatchReplay {
+    pub fn create(replay: DefaultGameReplay) -> Gd<Self> {
+        Gd::from_object(Self {
+            replay
         })
     }
 
-    // TODO: asynchronous
-    // TODO:
-    // #[func]
-    // pub fn create_timeline(&self) -> Gd<GameTimeline> {
-    //     let players = logic::standard::create_standard_snakes()
-    //         .into_iter()
-    //         .enumerate()
-    //         .map(|(i, snake)| {
-    //             let robot = ReplayRobot::new(self.match_.players[i].moves.clone());
-    //             Player::new(snake, Box::new(robot))
-    //         })
-    //         .collect();
-    //     let size = Size::new(STANDARD_WIDTH, STANDARD_HEIGHT);
-    //     let game = Game::new(size, STANDARD_APPLE_COUNT, self.match_.seed, players)
-    //         .expect("invalid game layout");
-    //     let timeline = GameTimeline::run_game(game);
-    //     Gd::from_object(timeline)
-    // }
+    #[func]
+    pub fn create_timeline(&self) -> Gd<GameTimeline> {
+        let game = self.replay.create_game();
+        let timeline = GameTimeline::run_game(game);
+        Gd::from_object(timeline)
+    }
 }
 
 #[derive(GodotClass)]

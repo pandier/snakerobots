@@ -7,9 +7,9 @@ CREATE TABLE users (
 
 CREATE TABLE matches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    seed BIGINT NOT NULL,
     winner UUID,
     aborted BOOL NOT NULL,
+    replay JSON NOT NULL,
     played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

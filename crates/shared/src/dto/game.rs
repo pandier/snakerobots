@@ -6,7 +6,6 @@ use crate::{Direction, GameResult, dto::User};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Match {
     pub id: String,
-    pub seed: u64,
     pub players: Vec<Option<User>>,
     pub played_at: DateTime<Utc>,
     pub winner: Option<String>,

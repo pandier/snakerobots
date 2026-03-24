@@ -6,7 +6,7 @@ use std::{
 use godot::prelude::*;
 use snakerobots_shared::{
     Point, Size,
-    logic::{self, Game, GameStep, Snake},
+    logic::{self, Game, GameStep, Snake, robot::impls::PathfindRobot},
 };
 
 #[derive(GodotClass)]
@@ -46,7 +46,7 @@ pub struct GameTimeline {
 impl GameTimeline {
     #[func]
     pub fn create(width: i32, height: i32) -> Option<Gd<GameTimeline>> {
-        logic::standard::create_standard_game_with_size(width, height).ok()
+        logic::standard::create_standard_game_with_size(|_| Box::new(PathfindRobot::new()), width, height).ok()
             .map(|game| Gd::from_object(Self::run_game(game)))
     }
 
