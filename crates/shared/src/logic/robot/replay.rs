@@ -1,4 +1,4 @@
-use crate::{Direction, logic::{Robot, RobotContext}};
+use crate::{Direction, logic::{Robot, RobotContext, robot::RobotResult}};
 
 pub struct ReplayRobot {
     index: usize,
@@ -15,11 +15,9 @@ impl ReplayRobot {
 }
 
 impl Robot for ReplayRobot {
-    fn step(&mut self, _ctx: RobotContext) -> Direction {
-        let direction = self.moves.get(self.index)
+    fn step(&mut self, _ctx: RobotContext) -> RobotResult {
+        self.moves.get(self.index)
             .cloned()
-            .unwrap_or_else(|| self.moves[0]);
-        self.index += 1;
-        direction
+            .ok_or_else(|| "replay finished".into())
     }
 }

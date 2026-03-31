@@ -7,7 +7,7 @@ use rand::{RngExt, SeedableRng, rngs::Xoshiro128PlusPlus};
 
 pub use robot::{Robot, RobotContext};
 
-use crate::{Direction, GameResult, Point, Size};
+use crate::{Direction, GameResult, Point, Size, logic::robot::error::{InfallibleRobotErrorHandler, RobotErrorHandler}};
 
 #[derive(Debug, Clone)]
 pub struct Snake {
@@ -249,14 +249,18 @@ impl Game {
         Some(game)
     }
 
-    pub fn step(&mut self) -> GameStep {
+    pub fn step_infallible(&mut self) -> GameStep {
+        self.step::<InfallibleRobotErrorHandler>().expect("infallible")
+    }
+
+    pub fn step<E: RobotErrorHandler>(&mut self) -> Result<GameStep, E::Error> {
         if let Some(result) = self.result.clone() {
-            return GameStep::Finished(result);
+            return Ok(GameStep::Finished(result));
         }
 
-        let moves = self
+        let ctxs = self
             .iter_snakes()
-            .map(|(i, player, snake)| {
+            .map(|(i, _, snake)| {
                 let ctx = RobotContext {
                     size: self.size,
                     snake: snake.clone(),
@@ -267,11 +271,26 @@ impl Game {
                         .collect(),
                     apples: self.apples.clone(),
                 };
-                let mut robot = player.robot.borrow_mut();
-                let dir = robot.step(ctx);
-                (i, dir)
+                (i, ctx)
             })
             .collect::<Vec<_>>();
+
+        let mut moves = Vec::new();
+
+        for (i, ctx) in ctxs {
+            let player = &mut self.players[i];
+            let mut robot = player.robot.borrow_mut();
+            let result = robot.step(ctx);
+            match result {
+                Ok(dir) => {
+                    moves.push((i, dir));
+                },
+                Err(err) => {
+                    E::handle(err)?;
+                    player.snake = None;
+                }
+            }
+        }
 
         let mut added_apples = Vec::new();
         let mut removed_apples = Vec::new();
@@ -335,11 +354,11 @@ impl Game {
 
         self.result = self.calculate_result();
 
-        GameStep::Success {
+        Ok(GameStep::Success {
             moves,
             added_apples,
             removed_apples,
-        }
+        })
     }
 
     fn iter_snakes(&self) -> impl Iterator<Item = (usize, &Player, &Snake)> {

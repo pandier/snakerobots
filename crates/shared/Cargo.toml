@@ -3,7 +3,13 @@ name = "snakerobots-shared"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+lang = ["dep:tropaion"]
+default = []
+
 [dependencies]
 rand = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
+
+tropaion = { git = "https://github.com/MiranCZ/Tropaion.git", rev = "437bcf10a07d74ce98e82d6ac553234fd3fb09c3", optional = true }

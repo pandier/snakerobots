@@ -35,7 +35,7 @@ impl<M> GameReplay<M> {
             .collect();
 
         let result = loop {
-            match game.step() {
+            match game.step_infallible() {
                 GameStep::Success { moves, added_apples: _, removed_apples: _ } => {
                     for (i, dir) in moves {
                         if let Some(snake) = snakes.get_mut(i) {

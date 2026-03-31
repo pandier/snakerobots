@@ -5,7 +5,7 @@ mod middleware;
 use arc_swap::ArcSwap;
 use godot::prelude::*;
 use snakerobots_shared::dto::{
-    DefaultGameReplay, Match, MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}
+    self, DefaultGameReplay, Match, MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}
 };
 use std::sync::Arc;
 use surf::{
@@ -193,7 +193,7 @@ impl SrClient {
     pub fn cancel_match_request(&self, receiver_id: String) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
             let this = self_gd.bind();
-            let user = this.user.as_ref().ok_or(SrClientError::Unauthorized)?;
+            let user = this.user.as_ref().ok_or(SrClientError::unauthorized())?;
             this._delete_match_request(user.id.clone(), receiver_id).await
         })
     }
@@ -202,7 +202,7 @@ impl SrClient {
     pub fn decline_match_request(&self, sender_id: String) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
             let this = self_gd.bind();
-            let user = this.user.as_ref().ok_or(SrClientError::Unauthorized)?;
+            let user = this.user.as_ref().ok_or(SrClientError::unauthorized())?;
             this._delete_match_request(sender_id, user.id.clone()).await
         })
     }
@@ -240,7 +240,11 @@ impl SrClient {
     where
         T: ToGodot + 'static,
     {
-        self.spawn_gd(async move |self_gd| SrResult::from(f(self_gd).await))
+        self.spawn_gd(async move |self_gd| {
+            let result = f(self_gd).await
+                .map_err(|err| Gd::from_object(err));
+            SrResult::from(result)
+        })
     }
 
     #[inline]
@@ -284,10 +288,10 @@ impl ParseResponse for surf::Response {
         let body = self.body_string().await?;
         if self.status().is_success() {
             Ok(body)
-        } else if let Ok(error) = serde_json::from_str(&body) {
-            Err(SrClientError::ResponseError(error))
+        } else if let Ok(error) = serde_json::from_str::<dto::Error>(&body) {
+            Err(SrClientError::new(&error.error, &error.message))
         } else {
-            Err(SrClientError::ResponseString(self.status(), body))
+            Err(SrClientError::unknown(&format!("{}: {}", self.status(), body)))
         }
     }
 }

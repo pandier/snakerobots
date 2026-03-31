@@ -6,30 +6,8 @@ use std::{
 use godot::prelude::*;
 use snakerobots_shared::{
     Point, Size,
-    logic::{self, Game, GameStep, Snake, robot::impls::PathfindRobot},
+    logic::{Game, GameStep, Snake, robot::error::RobotErrorHandler},
 };
-
-#[derive(GodotClass)]
-#[class(init, base=RefCounted)]
-pub struct GameSnake {
-    #[var]
-    pub points: Array<Vector2i>,
-    #[var]
-    pub is_alive: bool,
-}
-
-#[godot_api]
-impl GameSnake {
-    #[func]
-    pub fn create(points: Array<Vector2i>, is_alive: bool) -> Gd<Self> {
-        Gd::from_object(GameSnake { points, is_alive })
-    }
-
-    #[func]
-    pub fn points(&self) -> Array<Vector2i> {
-        self.points.clone()
-    }
-}
 
 #[derive(GodotClass)]
 #[class(no_init, base=RefCounted)]
@@ -44,16 +22,11 @@ pub struct GameTimeline {
 
 #[godot_api]
 impl GameTimeline {
-    #[func]
-    pub fn create(width: i32, height: i32) -> Option<Gd<GameTimeline>> {
-        logic::standard::create_standard_game_with_size(|_| Box::new(PathfindRobot::new()), width, height).ok()
-            .map(|game| Gd::from_object(Self::run_game(game)))
-    }
 
-    pub fn run_game(mut game: Game) -> GameTimeline {
+    pub fn evaluate<E: RobotErrorHandler>(mut game: Game) -> Result<GameTimeline, E::Error> {
         let mut builder = GameTimelineBuilder::new(game.snakes(), game.apples().clone());
         loop {
-            match game.step() {
+            match game.step::<E>()? {
                 GameStep::Success {
                     moves,
                     added_apples,
@@ -69,7 +42,8 @@ impl GameTimeline {
                 GameStep::Finished(_) => break,
             }
         }
-        builder.build(game.size(), game.apples().clone())
+        let timeline = builder.build(game.size(), game.apples().clone());
+        Ok(timeline)
     }
 
     #[func]
@@ -202,6 +176,28 @@ impl GameTimeline {
     #[func]
     pub fn get_height(&self) -> i32 {
         self.height
+    }
+}
+
+#[derive(GodotClass)]
+#[class(init, base=RefCounted)]
+pub struct GameSnake {
+    #[var]
+    pub points: Array<Vector2i>,
+    #[var]
+    pub is_alive: bool,
+}
+
+#[godot_api]
+impl GameSnake {
+    #[func]
+    pub fn create(points: Array<Vector2i>, is_alive: bool) -> Gd<Self> {
+        Gd::from_object(GameSnake { points, is_alive })
+    }
+
+    #[func]
+    pub fn points(&self) -> Array<Vector2i> {
+        self.points.clone()
     }
 }
 

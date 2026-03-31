@@ -2,6 +2,9 @@ pub mod dto;
 pub mod logic;
 pub mod math;
 
+#[cfg(feature = "lang")]
+pub use tropaion as lang;
+
 pub use math::{Direction, Point, Size};
 use serde::{Deserialize, Serialize};
 

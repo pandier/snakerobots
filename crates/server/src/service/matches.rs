@@ -164,16 +164,17 @@ pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: 
 }
 
 pub async fn delete_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> eyre::Result<bool> {
-    let result = sqlx::query!(
-        "DELETE FROM match_requests WHERE sender_id = $1 AND receiver_id = $2",
-        sender_id, receiver_id
-    ).execute(&app.pg).await?;
+    let result = sqlx::query("DELETE FROM match_requests WHERE sender_id = $1 AND receiver_id = $2")
+        .bind(sender_id)
+        .bind(receiver_id)
+        .execute(&app.pg)
+        .await?;
 
     Ok(result.rows_affected() > 0)
 }
 
 pub async fn cleanup_match_requests(app: &AppState) -> ServiceResult<()> {
-    sqlx::query!("DELETE FROM match_requests WHERE expires_at <= now()")
+    sqlx::query("DELETE FROM match_requests WHERE expires_at <= now()")
         .execute(&app.pg)
         .await?;
 

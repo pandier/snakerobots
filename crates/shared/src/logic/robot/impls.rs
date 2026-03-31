@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{Direction, Point, logic::{Robot, RobotContext, Snake}};
+use crate::{Direction, Point, logic::{Robot, RobotContext, Snake, robot::RobotResult}};
 
 #[derive(Clone)]
 struct Path {
@@ -94,15 +94,11 @@ impl Path {
     }
 }
 
-pub struct PathfindRobot {
-    last: Direction,
-}
+pub struct PathfindRobot;
 
 impl PathfindRobot {
     pub fn new() -> Self {
-        Self {
-            last: Direction::Up,
-        }
+        Self
     }
 
     fn find_path(
@@ -149,9 +145,11 @@ impl PathfindRobot {
 }
 
 impl Robot for PathfindRobot {
-    fn step(&mut self, ctx: RobotContext) -> Direction {
-        let path = self.find_path(Path::new(ctx.snake.head(), ctx.snake.direction()), &ctx, 40, true);
-        self.last = path.dir.unwrap_or(self.last);
-        self.last
+    fn step(&mut self, ctx: RobotContext) -> RobotResult {
+        let base_path = Path::new(ctx.snake.head(), ctx.snake.direction());
+        let dir = self.find_path(base_path, &ctx, 40, true)
+            .dir
+            .unwrap_or(ctx.snake.direction());
+        Ok(dir)
     }
 }

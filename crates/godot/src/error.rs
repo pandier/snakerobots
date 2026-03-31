@@ -6,75 +6,60 @@ pub struct SrResult {
     #[var]
     pub value: Variant,
     #[var]
-    pub err: Option<Gd<SrError>>,
+    pub err: Variant,
 }
 
 #[godot_api]
 impl SrResult {
     #[func]
     pub fn value(value: Variant) -> Gd<Self> {
-        Gd::from_object(Self { value, err: None })
+        Gd::from_object(Self {
+            value,
+            err: Variant::nil(),
+        })
     }
 
     #[func]
-    pub fn err(err: Gd<SrError>) -> Gd<Self> {
+    pub fn err(err: Variant) -> Gd<Self> {
         Gd::from_object(Self {
             value: Variant::nil(),
-            err: Some(err),
+            err: err,
         })
     }
 
     pub fn from<T, E>(result: Result<T, E>) -> Gd<Self>
     where
         T: ToGodot,
-        E: Into<SrError>,
+        E: ToGodot,
     {
         match result {
             Ok(v) => SrResult::value(v.to_variant()),
-            Err(err) => SrResult::err(Gd::from_object(err.into())),
+            Err(e) => SrResult::err(e.to_variant()),
         }
+    }
+
+    pub fn run<V, F>(f: F) -> Gd<Self>
+    where
+        V: ToGodot,
+        F: FnOnce() -> Result<V, Variant>,
+    {
+        Self::from(f())
     }
 }
 
 #[godot_api]
 impl IRefCounted for SrResult {
     fn to_string(&self) -> GString {
-        match &self.err {
-            Some(err) => format!("err({})", err).to_godot(),
-            None => format!("value({})", self.value.to_string()).to_godot(),
+        match self.err.is_nil() {
+            true => format!("value({})", self.value).to_godot(),
+            false => format!("err({})", self.err).to_godot(),
         }
     }
 }
 
 #[derive(GodotClass)]
 #[class(init, base=RefCounted)]
-pub struct SrError {
-    #[var]
-    pub code: GString,
+pub struct SrGenericError {
     #[var]
     pub message: GString,
-}
-
-#[godot_api]
-impl SrError {
-    #[func]
-    pub fn create(code: GString, message: GString) -> Gd<Self> {
-        Gd::from_object(Self { code, message })
-    }
-}
-
-#[godot_api]
-impl IRefCounted for SrError {
-    fn to_string(&self) -> GString {
-        format!("{{code=\"{}\",message=\"{}\"}}", self.code, self.message).to_godot()
-    }
-}
-
-impl<E: std::fmt::Display> From<E> for SrError {
-    fn from(value: E) -> Self {
-        Self {
-            code: "unknown".to_godot(),
-            message: format!("{}", value).to_godot(),
-        }
-    }
 }

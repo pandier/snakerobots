@@ -1,7 +1,7 @@
 use godot::prelude::*;
-use snakerobots_shared::dto::{DefaultGameReplay, Match, MatchRequest, User};
+use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchRequest, User}, logic::robot::error::InfallibleRobotErrorHandler};
 
-use crate::game::GameTimeline;
+use crate::game::timeline::GameTimeline;
 
 #[derive(GodotClass)]
 #[class(no_init, base=RefCounted)]
@@ -67,7 +67,8 @@ impl SrMatchReplay {
     #[func]
     pub fn create_timeline(&self) -> Gd<GameTimeline> {
         let game = self.replay.create_game();
-        let timeline = GameTimeline::run_game(game);
+        let timeline = GameTimeline::evaluate::<InfallibleRobotErrorHandler>(game)
+            .expect("infallible");
         Gd::from_object(timeline)
     }
 }

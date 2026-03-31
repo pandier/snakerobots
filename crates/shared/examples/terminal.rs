@@ -73,7 +73,7 @@ fn main() {
         sleep(Duration::from_millis(50).saturating_sub(Instant::now().duration_since(instant)));
         instant = Instant::now();
 
-        game.step();
+        game.step_infallible();
 
         print_grid(game.grid(), true);
     }

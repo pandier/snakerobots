@@ -1,34 +1,41 @@
-use godot::meta::ToGodot;
-use snakerobots_shared::dto;
-use surf::StatusCode;
+use godot::{prelude::*, meta::ToGodot};
 
-use crate::error::SrError;
-
-#[derive(Debug)]
-pub enum SrClientError {
-    Surf(surf::Error),
-    ResponseError(dto::Error),
-    ResponseString(StatusCode, String),
-    Unauthorized,
+#[derive(GodotClass)]
+#[class(init, base=RefCounted)]
+pub struct SrClientError {
+    #[var]
+    pub code: GString,
+    #[var]
+    pub message: GString,
 }
 
-impl From<SrClientError> for SrError {
-    fn from(value: SrClientError) -> Self {
-        let (code, message) = match value {
-            SrClientError::Surf(surf) => ("unknown".to_godot(), format!("{}", surf).to_godot()),
-            SrClientError::ResponseString(code, err) => (
-                "unknown".to_godot(),
-                format!("{}: {}", code, err).to_godot(),
-            ),
-            SrClientError::ResponseError(err) => (err.error.to_godot(), err.message.to_godot()),
-            SrClientError::Unauthorized => ("unauthorized".to_godot(), "Unauthorized".to_godot()),
-        };
-        Self { code, message }
+#[godot_api]
+impl SrClientError {
+    pub fn new(code: &str, message: &str) -> Self {
+        Self {
+            code: code.to_godot(),
+            message: message.to_godot(),
+        }
+    }
+
+    pub fn unknown(message: &str) -> Self {
+        Self::new("unknown", message)
+    }
+
+    pub fn unauthorized() -> Self {
+        Self::new("unauthorized", "Unauthorized")
     }
 }
 
-impl From<surf::Error> for SrClientError {
-    fn from(value: surf::Error) -> Self {
-        Self::Surf(value)
+#[godot_api]
+impl IRefCounted for SrClientError {
+    fn to_string(&self) -> GString {
+        format!("{{code=\"{}\",message=\"{}\"}}", self.code, self.message).to_godot()
+    }
+}
+
+impl<E: std::fmt::Display> From<E> for SrClientError {
+    fn from(value: E) -> Self {
+        Self::unknown(&value.to_string())
     }
 }
