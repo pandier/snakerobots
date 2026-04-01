@@ -8,14 +8,15 @@ pub const STANDARD_APPLE_COUNT: usize = 1;
 pub const MINIMUM_WIDTH: i32 = 7;
 pub const MINIMUM_HEIGHT: i32 = 3;
 
-pub fn create_standard_game(robot1: Box<dyn Robot>, robot2: Box<dyn Robot>) -> Game {
-    create_standard_game_with_size(robot1, robot2, STANDARD_WIDTH, STANDARD_HEIGHT)
+pub fn create_standard_game(robot1: Box<dyn Robot>, robot2: Box<dyn Robot>, seed: Option<u64>) -> Game {
+    create_standard_game_with_size(robot1, robot2, seed, STANDARD_WIDTH, STANDARD_HEIGHT)
         .expect("standard game should be correct")
 }
 
 pub fn create_standard_game_with_size(
     robot1: Box<dyn Robot>,
     robot2: Box<dyn Robot>,
+    seed: Option<u64>,
     width: i32,
     height: i32
 ) -> Result<Game, ()> {
@@ -36,7 +37,7 @@ pub fn create_standard_game_with_size(
         },
     ];
 
-    let seed = rand::rng().random();
+    let seed = seed.unwrap_or_else(|| rand::rng().random());
 
     Game::new(Size::new(width, height), STANDARD_APPLE_COUNT, seed, players).ok_or(())
 }

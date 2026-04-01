@@ -20,19 +20,23 @@ pub struct GameReplay<M> {
 
 impl<M> GameReplay<M> {
 
-    pub fn run_standard<F>(metadata_factory: F) -> Self
-    where
-        F: Fn(usize) -> M,
-    {
-        let mut game = create_standard_game(Box::new(PathfindRobot::new()), Box::new(PathfindRobot::new()));
+    pub fn run_standard(metadata1: M, metadata2: M) -> Self {
+        let mut game = create_standard_game(
+            Box::new(PathfindRobot::new()),
+            Box::new(PathfindRobot::new()),
+            None
+        );
 
-        let mut snakes: Vec<SnakeReplay<M>> = game.players().iter()
-            .enumerate()
-            .map(|(i, _)| SnakeReplay {
+        let mut snakes = vec![
+            SnakeReplay {
                 moves: Vec::new(),
-                metadata: metadata_factory(i)
-            })
-            .collect();
+                metadata: metadata1,
+            },
+            SnakeReplay {
+                moves: Vec::new(),
+                metadata: metadata2,
+            },
+        ];
 
         let result = loop {
             match game.step_infallible() {
@@ -57,7 +61,7 @@ impl<M> GameReplay<M> {
     pub fn create_game(&self) -> Game {
         let robot1 = ReplayRobot::new(self.snakes[0].moves.clone());
         let robot2 = ReplayRobot::new(self.snakes[1].moves.clone());
-        create_standard_game(Box::new(robot1), Box::new(robot2))
+        create_standard_game(Box::new(robot1), Box::new(robot2), Some(self.seed))
     }
 
     pub fn winner(&self) -> Option<&SnakeReplay<M>> {

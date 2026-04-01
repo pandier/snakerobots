@@ -15,11 +15,7 @@ pub fn queue_game(app: Arc<AppState>, player1: Uuid, player2: Uuid) {
 
 async fn run_game(app: Arc<AppState>, player1: Uuid, player2: Uuid) -> eyre::Result<()> {
     let replay = tokio::task::spawn_blocking(move || {
-        dto::GameReplay::run_standard(|i| match i {
-            0 => Some(player1),
-            1 => Some(player2),
-            _ => None,
-        })
+        dto::GameReplay::run_standard(Some(player1), Some(player2))
     }).await?;
 
     service::matches::create_match(&app, replay).await

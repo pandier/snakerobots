@@ -30,9 +30,11 @@ impl SrLocalGame {
             let game = logic::standard::create_standard_game_with_size(
                 Box::new(robot),
                 Box::new(PathfindRobot::new()),
+                None,
                 self.width,
                 self.height,
-            ).map_err(|_| SrLocalGameError::create("invalid game size").to_variant())?;
+            )
+            .map_err(|_| SrLocalGameError::create("invalid game size").to_variant())?;
 
             let timeline = GameTimeline::evaluate::<PropagatingRobotErrorHandler>(game)
                 .map_err(|err| convert_error(&code, err).to_variant())?;
