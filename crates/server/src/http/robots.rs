@@ -25,7 +25,7 @@ async fn list_robots(
     State(app): State<Arc<AppState>>,
     AuthedUser(user_id): AuthedUser,
 ) -> RouteResult<Json<Vec<Robot>>> {
-    let robots = service::robot::list_robots(&app, &user_id).await?;
+    let robots = service::robot::list_robots(&app, user_id).await?;
     Ok(Json(robots.into_iter()
         .map(|robot| robot.into())
         .collect()))
@@ -36,7 +36,7 @@ async fn get_robot(
     AuthedUser(user_id): AuthedUser,
     Path(robot_id): Path<String>,
 ) -> RouteResult<Json<Robot>> {
-    let robot = service::robot::get_robot(&app, &user_id, robot_id)
+    let robot = service::robot::get_robot(&app, user_id, robot_id)
         .await?
         .ok_or_else(|| RouteError::not_found())?;
     Ok(Json(robot.into()))
@@ -47,7 +47,7 @@ async fn create_robot(
     AuthedUser(user_id): AuthedUser,
     Json(create_robot): Json<CreateRobot>,
 ) -> RouteResult<(StatusCode, Json<Robot>)> {
-    let result = service::robot::create_robot(&app, &user_id, &create_robot.name).await;
+    let result = service::robot::create_robot(&app, user_id, &create_robot.name).await;
     match result {
         Ok(v) => Ok((StatusCode::CREATED, Json(v.into()))),
         Err(ServiceError::LimitReached(_)) => Err(RouteError::new(StatusCode::CONFLICT, "limit_reached", "You reached the limit for the number of robots")),
@@ -60,7 +60,7 @@ async fn delete_robot(
     AuthedUser(user_id): AuthedUser,
     Path(robot_id): Path<String>,
 ) -> RouteResult<()> {
-    let success = service::robot::delete_robot(&app, &user_id, robot_id).await?;
+    let success = service::robot::delete_robot(&app, user_id, robot_id).await?;
     if success {
         Ok(())
     } else {
@@ -74,7 +74,7 @@ async fn upload_robot(
     Path(robot_id): Path<String>,
     code: String,
 ) -> RouteResult<()> {
-    let success = service::robot::upload_robot(&app, &user_id, robot_id, &code).await?;
+    let success = service::robot::upload_robot(&app, user_id, robot_id, &code).await?;
     if success {
         Ok(())
     } else {
@@ -87,7 +87,7 @@ async fn download_robot(
     AuthedUser(user_id): AuthedUser,
     Path(robot_id): Path<String>,
 ) -> RouteResult<String> {
-    let code = service::robot::download_robot(&app, &user_id, robot_id)
+    let code = service::robot::download_robot(&app, user_id, robot_id)
         .await?
         .ok_or_else(RouteError::not_found)?;
     Ok(code)

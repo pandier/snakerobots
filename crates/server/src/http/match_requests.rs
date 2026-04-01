@@ -31,6 +31,10 @@ async fn create_match_request(
     AuthedUser(user_id): AuthedUser,
     Json(payload): Json<CreateMatchRequest>,
 ) -> RouteResult<Json<MatchRequest>> {
+    let Ok(robot_id) = Uuid::try_from(payload.robot_id) else {
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
+    };
+
     let receiver = service::user::get_user_by_username(&app, &payload.username)
         .await
         .wrap_err("failed to get user by username")?
@@ -40,7 +44,11 @@ async fn create_match_request(
         return Err(RouteError::new(StatusCode::BAD_REQUEST, "self_request", "Can't send a match request to yourself"));
     }
 
-    let result = service::matches::create_match_request(&app, user_id, receiver.id).await;
+    if !service::robot::exists_robot(&app, user_id, robot_id).await? {
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "unknown_robot", "The specified robot does not exist"));
+    }
+
+    let result = service::matches::create_match_request(&app, user_id, receiver.id, robot_id).await;
     match result {
         Ok(v) => Ok(Json(v.into())),
         Err(ServiceError::AlreadyExists(_)) => Err(RouteError::new(StatusCode::CONFLICT, "already_exists", "You already requested a match with this user")),
@@ -64,7 +72,9 @@ async fn delete_match_request(
         return Err(RouteError::new(StatusCode::BAD_REQUEST, "bad_request", "Match request must relate to the authenticated user"));
     }
 
-    let success = service::matches::delete_match_request(&app, sender_id, receiver_id).await?;
+    let success = service::matches::delete_match_request(&app, sender_id, receiver_id)
+        .await?
+        .is_some();
 
     if success {
         Ok(StatusCode::OK)
@@ -82,12 +92,21 @@ async fn accept_match_request(
         return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
     };
 
-    let success = service::matches::delete_match_request(&app, sender_id, user_id).await?;
+    let robot_code = service::robot::download_robot(&app, user_id, payload.robot_id)
+        .await?
+        .ok_or_else(|| RouteError::new(StatusCode::BAD_REQUEST, "unknown_robot", "The specified robot does not exist"))?;
 
-    if success {
-        service::game::queue_game(app.clone(), sender_id, user_id);
-        Ok(StatusCode::ACCEPTED)
-    } else {
-        Ok(StatusCode::NOT_FOUND)
-    }
+    let match_req = service::matches::delete_match_request(&app, sender_id, user_id)
+        .await?
+        .ok_or_else(|| RouteError::not_found())?;
+
+    let sender_robot_id = match_req.sender_robot_id
+        .ok_or_else(|| RouteError::new(StatusCode::CONFLICT, "robot_deleted", "One of the robots has been deleted since the creation of the match request"))?;
+
+    let sender_robot_code = service::robot::download_robot(&app, sender_id, sender_robot_id).await?
+        .ok_or_else(|| RouteError::new(StatusCode::CONFLICT, "robot_deleted", "One of the robots has been deleted since the creation of the match request"))?;
+
+    service::game::queue_game(app.clone(), sender_id, sender_robot_code, user_id, robot_code);
+
+    Ok(StatusCode::ACCEPTED)
 }

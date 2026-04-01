@@ -4,7 +4,7 @@ use rowplus_derive::RowPlus;
 use snakerobots_shared::dto;
 use sqlx::types::{Json, Uuid};
 
-use crate::{model::{MatchModel, MatchPlayerModel, MatchWithPlayersModel, matches::MatchRequestModel}, service::error::ServiceResult, state::AppState};
+use crate::{model::{MatchModel, MatchPlayerModel, MatchWithPlayersModel, matches::{DeletedMatchRequestModel, MatchRequestModel}}, service::error::ServiceResult, state::AppState};
 
 #[derive(Debug, Clone, RowPlus)]
 #[rowplus(alias = "match_players")]
@@ -138,7 +138,7 @@ pub async fn get_match_requests(app: &AppState, user_id: Uuid) -> eyre::Result<V
     )
 }
 
-pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> ServiceResult<MatchRequestModel> {
+pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid, robot_id: Uuid) -> ServiceResult<MatchRequestModel> {
     let expires_at = Utc::now() + Duration::minutes(30);
 
     Ok(
@@ -146,8 +146,8 @@ pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: 
             MatchRequestModel,
             r#"
                 WITH inserted AS (
-                    INSERT INTO match_requests (sender_id, receiver_id, expires_at) 
-                    VALUES ($1, $2, $3)
+                    INSERT INTO match_requests (sender_id, sender_robot_id, receiver_id, expires_at) 
+                    VALUES ($1, $2, $3, $4)
                     RETURNING *
                 )
                 SELECT {} FROM inserted match_requests
@@ -156,6 +156,7 @@ pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: 
             "#
         )
         .bind(sender_id)
+        .bind(robot_id)
         .bind(receiver_id)
         .bind(expires_at)
         .fetch_one(&app.pg)
@@ -163,14 +164,12 @@ pub async fn create_match_request(app: &AppState, sender_id: Uuid, receiver_id: 
     )
 }
 
-pub async fn delete_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> eyre::Result<bool> {
-    let result = sqlx::query("DELETE FROM match_requests WHERE sender_id = $1 AND receiver_id = $2")
+pub async fn delete_match_request(app: &AppState, sender_id: Uuid, receiver_id: Uuid) -> eyre::Result<Option<DeletedMatchRequestModel>> {
+    Ok(query_plus!(DeletedMatchRequestModel, "DELETE FROM match_requests WHERE sender_id = $1 AND receiver_id = $2 RETURNING {}")
         .bind(sender_id)
         .bind(receiver_id)
-        .execute(&app.pg)
-        .await?;
-
-    Ok(result.rows_affected() > 0)
+        .fetch_optional(&app.pg)
+        .await?)
 }
 
 pub async fn cleanup_match_requests(app: &AppState) -> ServiceResult<()> {

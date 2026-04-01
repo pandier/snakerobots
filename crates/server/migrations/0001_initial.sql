@@ -21,6 +21,7 @@ CREATE TABLE match_players (
 
 CREATE TABLE match_requests (
     sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_robot_id UUID REFERENCES robots(id) ON DELETE SET NULL,
     receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,

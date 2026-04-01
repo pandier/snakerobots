@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Direction, GameResult, logic::{Game, GameStep, robot::{impls::PathfindRobot, replay::ReplayRobot}, standard::create_standard_game}};
+use crate::{Direction, GameResult, logic::{Game, GameStep, Robot, robot::replay::ReplayRobot, standard::create_standard_game}};
 
 pub type DefaultGameReplay = GameReplay<Option<String>>;
 
@@ -20,12 +20,8 @@ pub struct GameReplay<M> {
 
 impl<M> GameReplay<M> {
 
-    pub fn run_standard(metadata1: M, metadata2: M) -> Self {
-        let mut game = create_standard_game(
-            Box::new(PathfindRobot::new()),
-            Box::new(PathfindRobot::new()),
-            None
-        );
+    pub fn run_standard(robot1: Box<dyn Robot>, metadata1: M, robot2: Box<dyn Robot>, metadata2: M) -> Self {
+        let mut game = create_standard_game(robot1, robot2, None);
 
         let mut snakes = vec![
             SnakeReplay {

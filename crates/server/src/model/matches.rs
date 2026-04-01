@@ -72,3 +72,9 @@ impl From<MatchRequestModel> for MatchRequest {
         }
     }
 }
+
+#[derive(Debug, Clone, RowPlus)]
+#[rowplus(alias = "match_requests")]
+pub struct DeletedMatchRequestModel {
+    pub sender_robot_id: Option<Uuid>,
+}

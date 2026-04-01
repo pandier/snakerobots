@@ -14,6 +14,7 @@ pub struct MatchRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateMatchRequest {
     pub username: String,
+    pub robot_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,4 +26,5 @@ pub struct DeleteMatchRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AcceptMatchRequest {
     pub sender_id: String,
+    pub robot_id: String,
 }
