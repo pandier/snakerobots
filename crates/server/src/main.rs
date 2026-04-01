@@ -23,7 +23,7 @@ async fn main() -> eyre::Result<()> {
 
     let app = Arc::new(AppState::new().await?);
 
-    if env_optional("MIGRATE")?.unwrap_or(true) {
+    if env_optional("MIGRATE")?.unwrap_or(false) {
         info!("running migrations");
 
         sqlx::migrate!()

@@ -3,6 +3,7 @@ mod error;
 mod extract;
 mod match_requests;
 mod matches;
+mod robots;
 mod users;
 
 use std::sync::Arc;
@@ -39,6 +40,7 @@ fn router(state: Arc<AppState>) -> Router {
         .nest("/users", users::router())
         .nest("/matches", matches::router())
         .nest("/match-requests", match_requests::router())
+        .nest("/robots", robots::router())
         .layer(tower::util::option_layer(state.dev_token.clone().map(|dev_token| ValidateRequestHeaderLayer::custom(DevTokenHeader(dev_token)))))
         .layer(ServiceBuilder::new()
             .layer(TraceLayer::new_for_http()))

@@ -34,6 +34,15 @@ CREATE TABLE sessions (
     expires_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE robots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(64) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    code VARCHAR(10000) NOT NULL DEFAULT ''
+);
+
 -- Enforce the match request limit
 CREATE FUNCTION enforce_match_request_limit() RETURNS TRIGGER AS $$
     BEGIN
@@ -43,6 +52,7 @@ CREATE FUNCTION enforce_match_request_limit() RETURNS TRIGGER AS $$
         RETURN NEW;
     END;
 $$ LANGUAGE plpgsql;
+
 CREATE TRIGGER match_request_limit BEFORE INSERT ON match_requests
     FOR EACH ROW EXECUTE FUNCTION enforce_match_request_limit();
 
@@ -56,5 +66,19 @@ CREATE FUNCTION cleanup_expired_match_request() RETURNS TRIGGER AS $$
         RETURN NEW;
     END;
 $$ LANGUAGE plpgsql;
+
 CREATE TRIGGER cleanup_expired_match_request BEFORE INSERT ON match_requests
     FOR EACH ROW EXECUTE FUNCTION cleanup_expired_match_request();
+
+-- Enforce the robot limit
+CREATE FUNCTION enforce_robot_limit() RETURNS TRIGGER AS $$
+    BEGIN
+        IF (SELECT COUNT(*) FROM robots WHERE user_id = NEW.user_id) >= 10 THEN
+            RAISE EXCEPTION USING MESSAGE = 'Maximum number of robots reached', ERRCODE = '23Z01';
+        END IF;
+        RETURN NEW;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER robot_limit BEFORE INSERT ON robots
+    FOR EACH ROW EXECUTE FUNCTION enforce_robot_limit();
