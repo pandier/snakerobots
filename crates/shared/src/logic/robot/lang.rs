@@ -4,26 +4,26 @@ use crate::{
     Direction,
     logic::{Robot, robot::RobotResult},
     lang::{
-        compiler::compiler::CompilationResult,
         error::{runtime_error::RuntimeError, context::ErrorContext},
+        interpreter::interpreter::Interpreter,
         util::arg_convertor::into_arg,
     },
 };
 
 use super::RobotContext;
 
-#[derive(Debug, Clone)]
 pub struct LangRobot {
-    compiled: CompilationResult,
+    interpreter: Interpreter,
 }
 
 impl LangRobot {
     pub fn compile(code: String) -> Result<Self, LangRobotError> {
         let compiled = crate::lang::compile(code)
             .map_err(|err| LangRobotError::Compile(err))?;
+        let interpreter = Interpreter::new(compiled.clone());
 
         Ok(Self {
-            compiled,
+            interpreter,
         })
     }
 }
@@ -38,7 +38,7 @@ impl Robot for LangRobot {
         };
 
         let mut blob = crate::lang::run_compiled(
-            self.compiled.clone(),
+            &mut self.interpreter,
             "step",
             vec![
                 into_arg(prev_dir),

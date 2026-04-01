@@ -8,40 +8,33 @@ pub const STANDARD_APPLE_COUNT: usize = 1;
 pub const MINIMUM_WIDTH: i32 = 7;
 pub const MINIMUM_HEIGHT: i32 = 3;
 
-pub fn create_standard_game<F>(robot_factory: F) -> Game
-where
-    F: Fn(usize) -> Box<dyn Robot>,
-{
-    create_standard_game_with_size(robot_factory, STANDARD_WIDTH, STANDARD_HEIGHT)
+pub fn create_standard_game(robot1: Box<dyn Robot>, robot2: Box<dyn Robot>) -> Game {
+    create_standard_game_with_size(robot1, robot2, STANDARD_WIDTH, STANDARD_HEIGHT)
         .expect("standard game should be correct")
 }
 
-pub fn create_standard_game_with_size<F>(
-    robot_factory: F,
+pub fn create_standard_game_with_size(
+    robot1: Box<dyn Robot>,
+    robot2: Box<dyn Robot>,
     width: i32,
     height: i32
-) -> Result<Game, ()>
-where
-    F: Fn(usize) -> Box<dyn Robot>,
-{
+) -> Result<Game, ()> {
     if width < MINIMUM_WIDTH || height < MINIMUM_HEIGHT {
         return Err(());
     }
 
-    let snakes = vec![
-        Snake::new(Point::new(1, height / 2), Direction::Right),
-        Snake::new(Point::new(width - 2, height / 2), Direction::Left),
-    ];
-
-    let players = snakes
-        .into_iter()
-        .enumerate()
-        .map(|(index, mut snake)| {
+    let players = vec![
+        {
+            let mut snake = Snake::new(Point::new(1, height / 2), Direction::Right);
             snake.expand_head(snake.direction);
-            let robot = robot_factory(index);
-            Player::new(snake, robot)
-        })
-        .collect();
+            Player::new(snake, robot1)
+        },
+        {
+            let mut snake = Snake::new(Point::new(width - 2, height / 2), Direction::Left);
+            snake.expand_head(snake.direction);
+            Player::new(snake, robot2)
+        },
+    ];
 
     let seed = rand::rng().random();
 

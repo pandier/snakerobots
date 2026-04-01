@@ -24,7 +24,7 @@ impl<M> GameReplay<M> {
     where
         F: Fn(usize) -> M,
     {
-        let mut game = create_standard_game(|_| Box::new(PathfindRobot::new()));
+        let mut game = create_standard_game(Box::new(PathfindRobot::new()), Box::new(PathfindRobot::new()));
 
         let mut snakes: Vec<SnakeReplay<M>> = game.players().iter()
             .enumerate()
@@ -55,10 +55,9 @@ impl<M> GameReplay<M> {
     }
 
     pub fn create_game(&self) -> Game {
-        create_standard_game(|index| {
-            let moves = self.snakes[index].moves.clone();
-            Box::new(ReplayRobot::new(moves))
-        })
+        let robot1 = ReplayRobot::new(self.snakes[0].moves.clone());
+        let robot2 = ReplayRobot::new(self.snakes[1].moves.clone());
+        create_standard_game(Box::new(robot1), Box::new(robot2))
     }
 
     pub fn winner(&self) -> Option<&SnakeReplay<M>> {

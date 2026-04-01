@@ -1,4 +1,3 @@
-
 use godot::prelude::*;
 use snakerobots_shared::{lang::{error::context::ErrorContext as LangErrorContext, util::either::Either}, logic::{self, robot::{error::PropagatingRobotErrorHandler, impls::PathfindRobot, lang::{LangRobot, LangRobotError}}}};
 
@@ -29,10 +28,8 @@ impl SrLocalGame {
                 .map_err(|err| convert_lang_error(&code, &err).to_variant())?;
 
             let game = logic::standard::create_standard_game_with_size(
-                |i| match i {
-                    0 => Box::new(robot.clone()),
-                    _ => Box::new(PathfindRobot::new()),
-                },
+                Box::new(robot),
+                Box::new(PathfindRobot::new()),
                 self.width,
                 self.height,
             ).map_err(|_| SrLocalGameError::create("invalid game size").to_variant())?;
