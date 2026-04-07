@@ -1,5 +1,5 @@
 use godot::prelude::*;
-use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchRequest, User}, logic::robot::error::InfallibleRobotErrorHandler};
+use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchRequest, Robot, User}, logic::robot::error::InfallibleRobotErrorHandler};
 
 use crate::game::timeline::GameTimeline;
 
@@ -94,6 +94,31 @@ impl SrMatchRequest {
             sender: SrUser::create(&req.sender),
             created_at: req.created_at.timestamp(),
             expires_at: req.expires_at.timestamp(),
+        })
+    }
+}
+
+#[derive(GodotClass)]
+#[class(no_init, base=RefCounted)]
+pub struct SrRobot {
+    #[var]
+    pub id: GString,
+    #[var]
+    pub name: GString,
+    #[var]
+    pub created_at: i64,
+    #[var]
+    pub edited_at: i64,
+}
+
+#[godot_api]
+impl SrRobot {
+    pub fn create(req: &Robot) -> Gd<Self> {
+        Gd::from_object(Self {
+            id: req.id.to_godot(),
+            name: req.name.to_godot(),
+            created_at: req.created_at.timestamp(),
+            edited_at: req.edited_at.timestamp(),
         })
     }
 }

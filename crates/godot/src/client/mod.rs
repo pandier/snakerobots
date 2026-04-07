@@ -12,7 +12,7 @@ use surf::{
     Url,
     http::{convert::DeserializeOwned, headers::AUTHORIZATION},
 };
-
+use snakerobots_shared::dto::robot::CreateRobot;
 use crate::{
     AsyncRuntime, SrFuture, SrResult,
     client::{classes::*, error::SrClientError, middleware::AuthorizationMiddleware},
@@ -146,9 +146,9 @@ impl SrClient {
     }
 
     #[func]
-    pub fn create_match_request(&self, username: String) -> Gd<SrFuture> {
+    pub fn create_match_request(&self, username: String, robot_id: String) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
-            let req = CreateMatchRequest { username };
+            let req = CreateMatchRequest { username, robot_id };
             let res = self_gd.bind().client
                 .post("/match-requests")
                 .body_json(&req)?
@@ -159,9 +159,9 @@ impl SrClient {
     }
 
     #[func]
-    pub fn accept_match_request(&self, sender_id: String) -> Gd<SrFuture> {
+    pub fn accept_match_request(&self, sender_id: String, robot_id: String) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
-            let req = AcceptMatchRequest { sender_id };
+            let req = AcceptMatchRequest { sender_id, robot_id };
             let _ = self_gd.bind().client
                 .post("/match-requests/accept")
                 .body_json(&req)?
@@ -204,6 +204,78 @@ impl SrClient {
             let this = self_gd.bind();
             let user = this.user.as_ref().ok_or(SrClientError::unauthorized())?;
             this._delete_match_request(sender_id, user.id.clone()).await
+        })
+    }
+
+    #[func]
+    pub fn get_robots(&self) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let res = self_gd.bind().client
+                .get("/robots")
+                .parse_response_json::<Vec<dto::Robot>>()
+                .await?;
+            Ok(res.iter()
+                .map(|robot| SrRobot::create(robot))
+                .collect::<Array<_>>())
+        })
+    }
+
+    #[func]
+    pub fn get_robot(&self, id: String) -> Gd<SrFuture> {
+        // TODO: injection o.o
+        self.spawn_result(async move |self_gd| {
+            let res = self_gd.bind().client
+                .get(format!("/robots/{}", id))
+                .parse_response_json::<dto::Robot>()
+                .await?;
+            Ok(SrRobot::create(&res))
+        })
+    }
+
+    #[func]
+    pub fn create_robot(&self, name: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let req = CreateRobot { name };
+            let res = self_gd.bind().client
+                .post("/robots")
+                .body_json(&req)?
+                .parse_response_json::<dto::Robot>()
+                .await?;
+            Ok(SrRobot::create(&res))
+        })
+    }
+
+    #[func]
+    pub fn delete_robot(&self, id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            self_gd.bind().client
+                .delete(format!("/robots/{}", id))
+                .parse_response()
+                .await?;
+            Ok(())
+        })
+    }
+
+    #[func]
+    pub fn upload_robot(&self, id: String, code: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            self_gd.bind().client
+                .post(format!("/robots/{}/upload", id))
+                .body_string(code)
+                .parse_response()
+                .await?;
+            Ok(())
+        })
+    }
+
+    #[func]
+    pub fn download_robot(&self, id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let res = self_gd.bind().client
+                .post(format!("/robots/{}/download", id))
+                .parse_response()
+                .await?;
+            Ok(res)
         })
     }
 
