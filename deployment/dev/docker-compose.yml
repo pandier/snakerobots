@@ -16,6 +16,8 @@ services:
     build:
       context: ../..
       dockerfile: server.Dockerfile
+      ssh:
+        - default
     restart: always
     depends_on:
       - db
