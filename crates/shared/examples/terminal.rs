@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let lang_robot = LangRobot::compile(r#"
         fn step(game: Game) -> Direction {
-            let head: Point = game.snake.points.get(0);
+            let head = game.snake.points.get(0);
 
             if (head.y == 0) {
                 if (head.x == 0) {
@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     "#.to_owned())?;
 
-    let mut game = create_standard_game(Box::new(lang_robot), Box::new(PathfindRobot::new()), Some(seed));
+    let mut game = create_standard_game(Box::new(lang_robot), Some(Box::new(PathfindRobot::new())), Some(seed));
 
     print_grid(game.grid(), false);
 

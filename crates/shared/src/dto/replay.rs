@@ -21,7 +21,7 @@ pub struct GameReplay<M> {
 impl<M> GameReplay<M> {
 
     pub fn run_standard(robot1: Box<dyn Robot>, metadata1: M, robot2: Box<dyn Robot>, metadata2: M) -> Self {
-        let mut game = create_standard_game(robot1, robot2, None);
+        let mut game = create_standard_game(robot1, Some(robot2), None);
 
         let mut snakes = vec![
             SnakeReplay {
@@ -57,7 +57,7 @@ impl<M> GameReplay<M> {
     pub fn create_game(&self) -> Game {
         let robot1 = ReplayRobot::new(self.snakes[0].moves.clone());
         let robot2 = ReplayRobot::new(self.snakes[1].moves.clone());
-        create_standard_game(Box::new(robot1), Box::new(robot2), Some(self.seed))
+        create_standard_game(Box::new(robot1), Some(Box::new(robot2)), Some(self.seed))
     }
 
     pub fn winner(&self) -> Option<&SnakeReplay<M>> {

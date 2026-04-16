@@ -1,13 +1,28 @@
 use godot::prelude::*;
-use snakerobots_shared::{lang::{error::context::ErrorContext as LangErrorContext, util::either::Either}, logic::{self, robot::{error::PropagatingRobotErrorHandler, impls::PathfindRobot, lang::{LangRobot, LangRobotError}}}};
-
+use snakerobots_shared::{
+    lang::{error::context::ErrorContext as LangErrorContext, util::either::Either},
+    logic::{self, Robot, robot::{error::PropagatingRobotErrorHandler, impls::PathfindRobot, lang::{LangRobot, LangRobotError}}}
+};
 use crate::{SrResult, game::timeline::GameTimeline};
+
+#[derive(GodotConvert, Var, Export, Default, Clone, Copy)]
+#[godot(via = i32)]
+pub enum SrLocalGameOpponent {
+    #[default]
+    Simple,
+    Mirror,
+    Code,
+}
 
 #[derive(GodotClass)]
 #[class(init, base=RefCounted)]
 pub struct SrLocalGame {
     #[var]
     pub code: GString,
+    #[var]
+    pub opponent: SrLocalGameOpponent,
+    #[var]
+    pub opponent_code: GString,
     #[var]
     #[init(val = logic::standard::STANDARD_WIDTH)]
     pub width: i32,
@@ -18,18 +33,34 @@ pub struct SrLocalGame {
 
 #[godot_api]
 impl SrLocalGame {
+    #[constant]
+    const OPPONENT_SIMPLE: i32 = 0;
+    #[constant]
+    const OPPONENT_MIRROR: i32 = 1;
+    #[constant]
+    const OPPONENT_CODE: i32 = 2;
 
     #[func]
     pub fn run(&self) -> Gd<SrResult> {
         let code = String::from(&self.code);
+        let opponent = self.opponent;
+        let opponent_code = String::from(&self.opponent_code);
 
         SrResult::run(|| {
             let robot = LangRobot::compile(code.clone())
                 .map_err(|err| convert_lang_error(&code, &err).to_variant())?;
 
+            let opponent: Option<Box<dyn Robot>> = match opponent {
+                SrLocalGameOpponent::Simple => Some(Box::new(PathfindRobot::new())),
+                SrLocalGameOpponent::Mirror => Some(Box::new(LangRobot::compile(code.clone())
+                    .map_err(|_| create_error("failed to compile mirror opponent").to_variant())?)),
+                SrLocalGameOpponent::Code => Some(Box::new(LangRobot::compile(opponent_code)
+                    .map_err(|_| create_error("failed to compile code opponent").to_variant())?)),
+            };
+
             let game = logic::standard::create_standard_game_with_size(
                 Box::new(robot),
-                Box::new(PathfindRobot::new()),
+                opponent,
                 None,
                 self.width,
                 self.height,
@@ -44,12 +75,15 @@ impl SrLocalGame {
     }
 }
 
-
 fn convert_error(code: &str, err: Box<dyn std::error::Error>) -> Array<Gd<SrLocalGameError>> {
     if let Some(lang_err) = err.downcast_ref::<LangRobotError>() {
         return convert_lang_error(code, lang_err);
     }
-    vec![SrLocalGameError::create(&err.to_string())].into_iter().collect()
+    create_error(&err.to_string())
+}
+
+fn create_error(message: &str) -> Array<Gd<SrLocalGameError>> {
+    vec![SrLocalGameError::create(message)].into_iter().collect()
 }
 
 fn convert_lang_error(code: &str, err: &LangRobotError) -> Array<Gd<SrLocalGameError>> {
