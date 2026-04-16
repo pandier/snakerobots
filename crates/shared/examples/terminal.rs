@@ -1,17 +1,10 @@
-use std::{
-    thread::sleep,
-    time::{Duration, Instant},
-    vec,
-};
-
+use std::{thread::sleep, time::{Duration, Instant}};
 use rand::RngExt;
-use snakerobots_shared::{Direction, Point, Size, logic::{Game, Grid, GridCell, Player, Snake, robot::impls::PathfindRobot}};
-
-fn build_player(x: i32, y: i32, dir: Direction) -> Player {
-    let mut snake = Snake::new(Point::new(x, y), dir);
-    snake.expand_tail(dir.opposite());
-    Player::new(snake, Box::new(PathfindRobot::new()))
-}
+use snakerobots_shared::{logic::{
+    standard::create_standard_game,
+    robot::{error::PropagatingRobotErrorHandler, lang::LangRobot, impls::PathfindRobot},
+    Grid, GridCell
+}, Point, Size};
 
 fn fmt_cell(space: &GridCell) -> String {
     match space {
@@ -43,38 +36,50 @@ fn print_grid(grid: &Grid, clear: bool) {
     print!("{}", output);
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let seed = rand::rng().random();
 
     println!("Seed: {}", seed);
 
-    let width = 25;
-    let height = 13;
-    let mut game = Game::new(
-        Size::new(width, height),
-        2,
-        seed,
-        vec![
-            build_player(2, 2, Direction::Right),
-            build_player(width - 3, 2, Direction::Left),
-            build_player(2, height - 3, Direction::Right),
-            build_player(width - 3, height - 3, Direction::Left),
-            build_player(width / 2, height - 3, Direction::Up),
-            build_player(width / 2, 2, Direction::Down),
-        ],
-    )
-    .expect("invalid game layout");
+    let lang_robot = LangRobot::compile(r#"
+        fn step(game: Game) -> Direction {
+            let head: Point = game.snake.points.get(0);
+
+            if (head.y == 0) {
+                if (head.x == 0) {
+                    return Direction.RIGHT;
+                } else if (head.x == 1) {
+                    return Direction.DOWN;
+                }
+            } else if (head.y == 1) {
+                if (head.x == 0) {
+                    return Direction.UP;
+                } else if (head.x == 1) {
+                    return Direction.LEFT;
+                }
+            }
+
+            if (head.y > 1) {
+                return Direction.UP;
+            }
+            return Direction.LEFT;
+        }
+    "#.to_owned())?;
+
+    let mut game = create_standard_game(Box::new(lang_robot), Box::new(PathfindRobot::new()), Some(seed));
 
     print_grid(game.grid(), false);
 
     let mut instant = Instant::now();
 
     while game.result().is_none() {
-        sleep(Duration::from_millis(50).saturating_sub(Instant::now().duration_since(instant)));
+        sleep(Duration::from_millis(20).saturating_sub(Instant::now().duration_since(instant)));
         instant = Instant::now();
 
-        game.step_infallible();
+        game.step::<PropagatingRobotErrorHandler>()?;
 
         print_grid(game.grid(), true);
     }
+
+    Ok(())
 }

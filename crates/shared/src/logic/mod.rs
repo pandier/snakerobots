@@ -109,6 +109,16 @@ impl Snake {
     }
 }
 
+#[cfg(feature = "lang")]
+impl crate::lang::util::arg_convertor::ValueLike for Snake {
+    fn into_convertable(self) -> crate::lang::util::arg_convertor::ValueConvertable {
+        let mut s = crate::lang::util::arg_convertor::struct_convertor("Snake");
+        s.add_field(self.points);
+        s.add_field(self.direction);
+        s.convert()
+    }
+}
+
 pub struct Player {
     snake: Option<Snake>,
     robot: RefCell<Box<dyn Robot>>,

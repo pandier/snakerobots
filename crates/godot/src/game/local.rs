@@ -55,15 +55,15 @@ fn convert_error(code: &str, err: Box<dyn std::error::Error>) -> Array<Gd<SrLoca
 fn convert_lang_error(code: &str, err: &LangRobotError) -> Array<Gd<SrLocalGameError>> {
     match err {
         LangRobotError::Compile(errs) => {
-            return errs.into_iter()
+            errs.into_iter()
                 .map(|ctx| convert_error_context(code, ctx))
                 .collect()
         },
         LangRobotError::Runtime(ctx) => {
-            return vec![convert_error_context(code, ctx)].into_iter().collect();
+            vec![convert_error_context(code, ctx)].into_iter().collect()
         },
         err => {
-            return vec![SrLocalGameError::create(&err.to_string())].into_iter().collect();
+            vec![SrLocalGameError::create(&err.to_string())].into_iter().collect()
         }
     }
 }
@@ -73,7 +73,7 @@ where
     T: std::fmt::Display,
 {
     Gd::from_object(SrLocalGameError {
-        span: Some(Gd::from_object(SrLocalGameErrorSpan::from_context(ctx, code))),
+        span: SrLocalGameErrorSpan::from_context(ctx, code).map(|x| Gd::from_object(x)),
         message: ctx.error.to_string().to_godot(),
     })
 }
@@ -114,57 +114,66 @@ pub struct SrLocalGameErrorSpan {
 }
 
 impl SrLocalGameErrorSpan {
-    pub fn from_context<T>(ctx: &LangErrorContext<T>, code: &str) -> Self {
-        return match ctx.span {
+    pub fn from_context<T>(ctx: &LangErrorContext<T>, code: &str) -> Option<Self> {
+        match ctx.span {
             Either::Left(span) => {
-                let (line_from, column_from) = get_line_and_column(code, span.from);
-                let (line_to, column_to) = get_line_and_column(code, span.to);
+                let (line_from, column_from) = get_line_and_column(code, span.from)?;
+                let (line_to, column_to) = get_line_and_column(code, span.to)?;
 
-                Self {
+                Some(Self {
                     line_from,
                     line_to,
                     column_from,
                     column_to,
                     char_from: span.from as i64,
                     char_to: span.to as i64,
-                }
+                })
             },
             Either::Right(l) => {
+                let mut i = 0;
                 let mut c = 0;
                 let mut len = 0;
 
-                for (i, line) in code.split_inclusive('\n').enumerate() {
+                for line in code.split_inclusive('\n') {
                     c += len;
                     len = line.chars().count();
 
                     if i == l {
                         break
                     }
+
+                    i += 1;
                 }
 
-                Self {
-                    line_from: l as i64,
-                    line_to: l as i64,
-                    column_from: 0,
-                    column_to: len as i64,
-                    char_from: c as i64,
-                    char_to: (c + len) as i64,
+                // check if outside the bounds of the code
+                if i < l {
+                    None
+                } else {
+                    Some(Self {
+                        line_from: l as i64,
+                        line_to: l as i64,
+                        column_from: 0,
+                        column_to: len as i64,
+                        char_from: c as i64,
+                        char_to: (c + len) as i64,
+                    })
                 }
             },
         }
     }
-
 }
 
-fn get_line_and_column(s: &str, i: usize) -> (i64, i64) {
+fn get_line_and_column(s: &str, i: usize) -> Option<(i64, i64)> {
+    let mut j = 0usize;
     let mut line = 0;
     let mut col = 0;
 
-    for (j, char) in s.chars().enumerate() {
+    for char in s.chars() {
         if j == i {
             break;
         }
 
+        j += 1;
         col += 1;
         if char == '\n' {
             line += 1;
@@ -172,5 +181,10 @@ fn get_line_and_column(s: &str, i: usize) -> (i64, i64) {
         }
     }
 
-    (line, col)
+    // check if outside the bounds of the code
+    if j < i {
+        None
+    } else {
+        Some((line, col))
+    }
 }

@@ -1,23 +1,48 @@
-use std::error::Error;
-
-use crate::{
-    Direction,
-    logic::{Robot, robot::RobotResult},
-    lang::{
-        error::{runtime_error::RuntimeError, context::ErrorContext},
-        interpreter::interpreter::Interpreter,
-        util::arg_convertor::into_arg,
-    },
-};
+use crate::{Direction, Point, logic::{Robot, robot::RobotResult}, lang::{
+    error::{runtime_error::RuntimeError, context::ErrorContext},
+    interpreter::interpreter::Interpreter,
+    util::arg_convertor::ValueConvertable,
+}};
 
 use super::RobotContext;
+
+const LIB_CODE: &str = r#"
+struct Point(
+    x: int,
+    y: int,
+);
+
+struct Snake(
+    points: Vec<Point>,
+    direction: Direction,
+) {
+    fn head() -> Point {
+        return this.points.get(0);
+    }
+
+    fn tail() -> Point {
+        return this.points.get(this.points.size() - 1);
+    }
+}
+
+struct Game(
+    width: int,
+    height: int,
+    snake: Snake,
+    opponents: Vec<Snake>,
+    apples: Vec<Point>,
+);
+"#;
 
 pub struct LangRobot {
     interpreter: Interpreter,
 }
 
 impl LangRobot {
-    pub fn compile(code: String) -> Result<Self, LangRobotError> {
+    pub fn compile(mut code: String) -> Result<Self, LangRobotError> {
+        code += "\n\n";
+        code += LIB_CODE.trim();
+
         let compiled = crate::lang::compile(code)
             .map_err(|err| LangRobotError::Compile(err))?;
         let interpreter = Interpreter::new(compiled.clone());
@@ -28,22 +53,25 @@ impl LangRobot {
     }
 }
 
+fn build_game_instance(ctx: &RobotContext) -> ValueConvertable {
+    let mut s = crate::lang::util::arg_convertor::struct_convertor("Game");
+    s.add_field(ctx.size.width);
+    s.add_field(ctx.size.height);
+    s.add_field(ctx.snake.clone());
+    s.add_field(ctx.opponents.clone());
+    s.add_field(ctx.apples.iter().cloned().collect::<Vec<Point>>());
+    s.convert()
+}
+
 impl Robot for LangRobot {
     fn step(&mut self, ctx: RobotContext) -> RobotResult {
-        let prev_dir = match ctx.snake.direction() {
-            Direction::Up => 0,
-            Direction::Right => 1,
-            Direction::Down => 2,
-            Direction::Left => 3,
-        };
-
         let mut blob = crate::lang::run_compiled(
             &mut self.interpreter,
             "step",
             vec![
-                into_arg(prev_dir),
+                build_game_instance(&ctx),
             ],
-            &mut std::io::empty(),
+            &mut std::io::stdout(),
         )
         .map_err(|err| LangRobotError::Runtime(err))?;
 
@@ -55,9 +83,9 @@ impl Robot for LangRobot {
 
         let dir = match dir_int {
             0 => Direction::Up,
-            1 => Direction::Right,
-            2 => Direction::Down,
-            3 => Direction::Left,
+            1 => Direction::Down,
+            2 => Direction::Left,
+            3 => Direction::Right,
             _ => return Err(Box::new(LangRobotError::InvalidDirection)),
         };
 
@@ -67,7 +95,7 @@ impl Robot for LangRobot {
 
 #[derive(Debug)]
 pub enum LangRobotError {
-    Compile(Vec<ErrorContext<Box<dyn Error>>>),
+    Compile(Vec<ErrorContext<Box<dyn std::error::Error>>>),
     Runtime(ErrorContext<RuntimeError>),
     Return(RuntimeError),
     InvalidDirection,

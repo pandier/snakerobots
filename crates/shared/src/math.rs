@@ -17,6 +17,16 @@ impl Point {
     }
 }
 
+#[cfg(feature = "lang")]
+impl crate::lang::util::arg_convertor::ValueLike for Point {
+    fn into_convertable(self) -> crate::lang::util::arg_convertor::ValueConvertable {
+        let mut s = crate::lang::util::arg_convertor::struct_convertor("Point");
+        s.add_field(self.x);
+        s.add_field(self.y);
+        s.convert()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Size {
     pub width: i32,
@@ -81,6 +91,18 @@ impl Direction {
 
     pub fn try_vec_from_string(string: String) -> Result<Vec<Self>, DirFromCharError> {
         string.chars().map(|c| Direction::try_from(c)).collect()
+    }
+}
+
+#[cfg(feature = "lang")]
+impl crate::lang::util::arg_convertor::ValueLike for Direction {
+    fn into_convertable(self) -> crate::lang::util::arg_convertor::ValueConvertable {
+        match self {
+            Self::Up => 0.into_convertable(),
+            Self::Down => 1.into_convertable(),
+            Self::Left => 2.into_convertable(),
+            Self::Right => 3.into_convertable(),
+        }
     }
 }
 
