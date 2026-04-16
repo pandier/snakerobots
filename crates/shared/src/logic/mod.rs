@@ -107,6 +107,10 @@ impl Snake {
             None
         }
     }
+
+    pub fn size(&self) -> usize {
+        self.points.len()
+    }
 }
 
 #[cfg(feature = "lang")]
@@ -176,7 +180,7 @@ impl Grid {
         usize::try_from(point.x + self.size.width * point.y).ok()
     }
 
-    fn from_index(&self, index: usize) -> Point {
+    fn by_index(&self, index: usize) -> Point {
         let index = index as i32;
         Point::new(index % self.size.width, index / self.size.width)
     }
@@ -193,7 +197,7 @@ impl Grid {
         self.cells
             .iter()
             .enumerate()
-            .map(|(i, cell)| (self.from_index(i), cell))
+            .map(|(i, cell)| (self.by_index(i), cell))
     }
 
     pub fn size(&self) -> Size {
@@ -407,16 +411,26 @@ impl Game {
 
     fn calculate_result(&self) -> Option<GameResult> {
         if self.steps_without_apple >= self.max_steps_without_apple {
-            return Some(GameResult::Tie);
+            // tiebreaker based on snake sizes
+            let max_size = self.iter_snakes().map(|(_, _, s)| s.size()).max();
+            let mut iter = max_size.iter()
+                .flat_map(|max_size| self.iter_snakes()
+                    .filter(|(_, _, s)| s.size() == *max_size)
+                    .map(|(i, _, _)| i));
+
+            // check if there is a single winner
+            return match (iter.next(), iter.next()) {
+                (Some(winner), None) => Some(GameResult::Win { winner }),
+                _ => Some(GameResult::Tie),
+            }
         }
 
-        let mut iter = self.iter_snakes();
-        match iter.next() {
-            Some((winner, _, _)) => match iter.next() {
-                Some(_) => None,
-                None => Some(GameResult::Win { winner }),
-            }
-            None => Some(GameResult::Tie),
+        // check if there is a single winner
+        let mut iter = self.iter_snakes().map(|(i, _, _)| i);
+        match (iter.next(), iter.next()) {
+            (Some(winner), None) => Some(GameResult::Win { winner }),
+            (None, _) => Some(GameResult::Tie),
+            _ => None,
         }
     }
 
