@@ -16,12 +16,16 @@ struct Snake(
     points: Vec<Point>,
     direction: Direction,
 ) {
-    fn head() -> Point {
+    pub fn head() -> Point {
         return this.points.get(0);
     }
 
-    fn tail() -> Point {
+    pub fn tail() -> Point {
         return this.points.get(this.points.size() - 1);
+    }
+
+    pub fn size() -> int {
+        return this.points.size();
     }
 }
 
