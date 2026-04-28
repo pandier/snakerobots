@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use eyre::Context;
 use snakerobots_shared::{dto::GameReplay, logic::robot::lang::LangRobot};
@@ -8,20 +8,30 @@ use tracing::{debug, info, warn};
 
 use crate::{service, state::AppState};
 
-pub fn queue_game(app: Arc<AppState>, player1: Uuid, code1: String, player2: Uuid, code2: String) {
+pub fn queue_game(app: Arc<AppState>, player1: Uuid, code1: String, player2: Uuid, code2: String, ranked: bool) {
     tokio::spawn(async move {
-        let _ = run_game(app, player1, code1, player2, code2).await;
+        let _ = run_game(app, player1, code1, player2, code2, ranked).await;
     });
 }
 
 #[tracing::instrument(skip(app, code1, code2), err(Debug))]
-async fn run_game(app: Arc<AppState>, player1: Uuid, code1: String, player2: Uuid, code2: String) -> eyre::Result<()> {
+async fn run_game(app: Arc<AppState>, player1: Uuid, code1: String, player2: Uuid, code2: String, ranked: bool) -> eyre::Result<()> {
     let replay = tokio::task::spawn_blocking(move || {
         run_game_blocking(player1, code1, player2, code2)
     }).await?;
 
     if let Some(replay) = replay {
-        service::matches::create_match(&app, replay).await
+        let mut elo = HashMap::new();
+
+        if ranked {
+            let winner = replay.winner().and_then(|snake| snake.metadata.clone());
+            let result = service::user::update_elo(&app, player1, player2, winner).await
+                .wrap_err("failed to update elo")?;
+            elo.insert(player1, result.0);
+            elo.insert(player2, result.1);
+        }
+
+        service::matches::create_match(&app, replay, elo).await
             .wrap_err("failed to create match")?;
     }
 

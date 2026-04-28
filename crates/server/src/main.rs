@@ -3,11 +3,12 @@ pub mod middleware;
 pub mod model;
 pub mod service;
 pub mod state;
+pub mod matchmaking;
 
-use crate::state::{AppState, env_optional};
+use crate::{matchmaking::Matchmaker, state::{AppState, env_optional}};
 use eyre::Context;
 use tokio::time::sleep;
-use tracing::{debug, info, level_filters::LevelFilter};
+use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 use std::{sync::Arc, time::Duration};
 
@@ -34,6 +35,9 @@ async fn main() -> eyre::Result<()> {
 
     tokio::spawn(cleanup_task(app.clone()));
 
+    let matchmaker = Matchmaker::new(app.clone());
+    tokio::spawn(async move { matchmaker.start().await });
+
     http::serve(app).await
 }
 
@@ -44,7 +48,7 @@ async fn cleanup_task(app: Arc<AppState>) {
             _ = app.shutdown.cancelled() => break,
         }
 
-        debug!("executing cleanups");
+        info!("executing cleanups");
         let _ = service::auth::cleanup_sessions(&app)
             .await
             .inspect_err(|err| tracing::error!("failed to cleanup sessions: {}", err));

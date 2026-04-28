@@ -2,21 +2,37 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(20) NOT NULL UNIQUE,
     password TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    elo INTEGER NOT NULL DEFAULT 1000
 );
+
+CREATE TABLE robots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(64) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    code VARCHAR(10000) NOT NULL DEFAULT ''
+);
+
+ALTER TABLE users
+    ADD competing_robot_id UUID REFERENCES robots(id) ON DELETE SET NULL;
 
 CREATE TABLE matches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     winner UUID,
     aborted BOOL NOT NULL,
     replay JSON NOT NULL,
-    played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    played_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ranked BOOL NOT NULL DEFAULT false
 );
 
 CREATE TABLE match_players (
     id SERIAL PRIMARY KEY,
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    elo INTEGER,
+    elo_diff INTEGER
 );
 
 CREATE TABLE match_requests (
@@ -33,15 +49,6 @@ CREATE TABLE sessions (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE robots (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(64) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    edited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    code VARCHAR(10000) NOT NULL DEFAULT ''
 );
 
 -- Enforce the match request limit

@@ -106,7 +106,7 @@ async fn accept_match_request(
     let sender_robot_code = service::robot::download_robot(&app, sender_id, sender_robot_id).await?
         .ok_or_else(|| RouteError::new(StatusCode::CONFLICT, "robot_deleted", "One of the robots has been deleted since the creation of the match request"))?;
 
-    service::game::queue_game(app.clone(), sender_id, sender_robot_code, user_id, robot_code);
+    service::game::queue_game(app.clone(), sender_id, sender_robot_code, user_id, robot_code, false);
 
     Ok(StatusCode::ACCEPTED)
 }

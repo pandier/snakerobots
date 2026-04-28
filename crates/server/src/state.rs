@@ -1,6 +1,6 @@
-use std::{env::VarError, str::FromStr};
+use std::{env::VarError, str::FromStr, time::Duration};
 
-use chrono::Duration;
+use chrono::TimeDelta;
 use eyre::Context;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tokio_util::sync::CancellationToken;
@@ -9,7 +9,8 @@ use tracing::{error, info};
 #[derive(Clone)]
 pub struct AppState {
     pub dev_token: Option<String>,
-    pub session_timeout: Duration,
+    pub session_timeout: TimeDelta,
+    pub matchmaker_interval: Option<Duration>,
     pub shutdown: CancellationToken,
     pub pg: PgPool,
 }
@@ -22,7 +23,10 @@ impl AppState {
         }
 
         let dev_token = env_optional("DEV_TOKEN")?;
-        let session_timeout = Duration::seconds(env("SESSION_TIMEOUT")?);
+        let session_timeout = TimeDelta::seconds(env("SESSION_TIMEOUT")?);
+        let matchmaker_interval = env_optional::<i64>("MATCHMAKER_INTERVAL")?
+            .filter(|x| *x >= 0)
+            .map(|x| Duration::from_secs(x as u64));
         let pg_url = env::<String>("DATABASE_URL")?;
 
         let pg = PgPoolOptions::new()
@@ -36,6 +40,7 @@ impl AppState {
         Ok(AppState {
             dev_token,
             session_timeout,
+            matchmaker_interval,
             shutdown,
             pg,
         })

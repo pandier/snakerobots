@@ -1,5 +1,6 @@
 use eyre::Context;
 use sqlx::types::Uuid;
+use tracing::debug;
 
 use crate::{model::UserModel, service, state::AppState};
 
@@ -26,5 +27,55 @@ pub async fn create_user(app: &AppState, username: String, password: String) -> 
         .bind(username)
         .bind(hashed_password)
         .fetch_optional(&app.pg)
+        .await?)
+}
+
+const ELO_K: f64 = 20f64;
+
+pub async fn update_elo(app: &AppState, user1: Uuid, user2: Uuid, winner: Option<Uuid>) -> eyre::Result<((i32, i32), (i32, i32))> {
+    let mut tx = app.pg.begin().await?;
+
+    let (elo1,): (i32,) = sqlx::query_as("SELECT elo FROM users WHERE id = $1 FOR UPDATE")
+        .bind(user1)
+        .fetch_one(&mut *tx)
+        .await?;
+
+    let (elo2,): (i32,) = sqlx::query_as("SELECT elo FROM users WHERE id = $1 FOR UPDATE")
+        .bind(user2)
+        .fetch_one(&mut *tx)
+        .await?;
+
+    // calculate the diff for user 1
+    let score = winner.map(|w| if w == user1 { 1f64 } else { 0f64 }).unwrap_or(0.5f64);
+    let expected = 1f64 / (1f64 + 10f64.powf((elo2 - elo1) as f64 / 400f64));
+    let diff = (ELO_K * (score - expected)).round() as i32;
+
+    let new_elo1 = elo1 + diff;
+    let new_elo2 = elo2 - diff;
+
+    sqlx::query("UPDATE users SET elo = $1 WHERE id = $2")
+        .bind(new_elo1)
+        .bind(user1)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("UPDATE users SET elo = $1 WHERE id = $2")
+        .bind(new_elo2)
+        .bind(user2)
+        .execute(&mut *tx)
+        .await?;
+
+    debug!("ranked match between {user1} ({elo1}) and {user2} ({elo2}) resulted in score {score}, diff {diff}");
+
+    tx.commit().await?;
+
+    Ok(((elo1, diff), (elo2, -diff)))
+}
+
+pub async fn get_users_for_matchmaking(app: &AppState, offset: i32, limit: i32) -> eyre::Result<Vec<(Uuid, i32, Uuid)>> {
+    Ok(sqlx::query_as("SELECT id, elo, competing_robot_id FROM users WHERE competing_robot_id IS NOT NULL LIMIT $1 OFFSET $2")
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&app.pg)
         .await?)
 }
