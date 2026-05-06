@@ -7,7 +7,7 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use snakerobots_shared::dto::user::UpdateCompetingRobot;
-use snakerobots_shared::dto::{User, PrivateUser};
+use snakerobots_shared::dto::{PrivateUser, User, UserRanking};
 use snakerobots_shared::dto::game::{Match};
 use uuid::Uuid;
 use std::sync::Arc;
@@ -16,6 +16,7 @@ pub fn router() -> Router<Arc<AppState>> {
     Router::new()
         .route("/{id}", get(get_user))
         .route("/{id}/matches", get(get_user_matches))
+        .route("/{id}/ranking", get(get_user_ranking))
         .route("/me", get(get_me))
         .route("/me/competing-robot", post(update_competing_robot))
 }
@@ -40,6 +41,16 @@ async fn get_user_matches(
         .map(|m| m.into())
         .collect();
     Ok(Json(matches))
+}
+
+async fn get_user_ranking(
+    State(app): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
+) -> RouteResult<Json<UserRanking>> {
+    let rank = service::user::get_user_ranking(&app, user_id)
+        .await?
+        .ok_or_else(|| RouteError::not_found())?;
+    Ok(Json(UserRanking { rank }))
 }
 
 async fn get_me(

@@ -226,6 +226,28 @@ impl SrClient {
     }
 
     #[func]
+    pub fn get_user(&self, id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let res = self_gd.bind().client
+                .get(format!("/users/{}", id))
+                .parse_response_json::<dto::User>()
+                .await?;
+            Ok(SrUser::create(&res))
+        })
+    }
+
+    #[func]
+    pub fn get_user_ranking(&self, id: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |self_gd| {
+            let res = self_gd.bind().client
+                .get(format!("/users/{}/ranking", id))
+                .parse_response_json::<dto::UserRanking>()
+                .await?;
+            Ok(res.rank)
+        })
+    }
+
+    #[func]
     pub fn get_robots(&self) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
             let res = self_gd.bind().client

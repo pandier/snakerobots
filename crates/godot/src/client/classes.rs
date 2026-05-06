@@ -1,5 +1,5 @@
 use godot::prelude::*;
-use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchRequest, Robot, User, PrivateUser}, logic::robot::error::InfallibleRobotErrorHandler};
+use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchRequest, PrivateUser, Robot, ShortUser, User}, logic::robot::error::InfallibleRobotErrorHandler};
 
 use crate::game::timeline::GameTimeline;
 
@@ -24,6 +24,25 @@ impl SrUser {
             username: user.username.to_godot(),
             created_at: user.created_at.timestamp(),
             elo: user.elo,
+        })
+    }
+}
+
+#[derive(GodotClass)]
+#[class(no_init, base=RefCounted)]
+pub struct SrShortUser {
+    #[var]
+    pub id: GString,
+    #[var]
+    pub username: GString,
+}
+
+#[godot_api]
+impl SrShortUser {
+    pub fn create(user: &ShortUser) -> Gd<Self> {
+        Gd::from_object(Self {
+            id: user.id.to_godot(),
+            username: user.username.to_godot(),
         })
     }
 }
@@ -68,7 +87,7 @@ pub struct SrMatch {
     #[var]
     pub played_at: i64,
     #[var]
-    pub players: Array<Option<Gd<SrUser>>>,
+    pub players: Array<Option<Gd<SrShortUser>>>,
     #[var]
     pub ranked: bool,
 }
@@ -78,9 +97,14 @@ impl SrMatch {
     pub fn create(match_: Match) -> Gd<Self> {
         Gd::from_object(Self {
             id: match_.id.to_godot(),
-            winner_id: match_.winner.as_ref().map(|id| id.to_variant()).unwrap_or_else(Variant::nil),
+            winner_id: match_.winner.as_ref()
+                .map(|id| id.to_variant())
+                .unwrap_or_else(Variant::nil),
             played_at: match_.played_at.timestamp(),
-            players: match_.players.iter().map(|player| player.as_ref().map(SrUser::create)).collect(),
+            players: match_.players.iter()
+                .map(|player| player.as_ref()
+                .map(SrShortUser::create))
+                .collect(),
             ranked: match_.ranked,
         })
     }
@@ -113,9 +137,9 @@ impl SrMatchReplay {
 #[class(no_init, base=RefCounted)]
 pub struct SrMatchRequest {
     #[var]
-    pub receiver: Gd<SrUser>,
+    pub receiver: Gd<SrShortUser>,
     #[var]
-    pub sender: Gd<SrUser>,
+    pub sender: Gd<SrShortUser>,
     #[var]
     pub created_at: i64,
     #[var]
@@ -126,8 +150,8 @@ pub struct SrMatchRequest {
 impl SrMatchRequest {
     pub fn create(req: &MatchRequest) -> Gd<Self> {
         Gd::from_object(Self {
-            receiver: SrUser::create(&req.receiver),
-            sender: SrUser::create(&req.sender),
+            receiver: SrShortUser::create(&req.receiver),
+            sender: SrShortUser::create(&req.sender),
             created_at: req.created_at.timestamp(),
             expires_at: req.expires_at.timestamp(),
         })

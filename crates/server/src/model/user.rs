@@ -43,17 +43,13 @@ impl From<UserModel> for dto::PrivateUser {
 pub struct PartialUserModel {
     pub id: Uuid,
     pub username: String,
-    pub created_at: DateTime<Utc>,
-    pub elo: i32,
 }
 
-impl From<PartialUserModel> for dto::User {
+impl From<PartialUserModel> for dto::ShortUser {
     fn from(value: PartialUserModel) -> Self {
         Self {
             id: value.id.to_string(),
             username: value.username,
-            created_at: value.created_at,
-            elo: value.elo,
         }
     }
 }

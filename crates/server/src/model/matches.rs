@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use rowplus_derive::RowPlus;
-use snakerobots_shared::dto::{self, MatchRequest, User};
+use snakerobots_shared::dto::{self, MatchRequest, ShortUser};
 use sqlx::types::Uuid;
 
 use crate::model::PartialUserModel;
@@ -29,7 +29,7 @@ pub struct MatchPlayerModel {
     pub user: Option<PartialUserModel>,
 }
 
-impl From<MatchPlayerModel> for Option<User> {
+impl From<MatchPlayerModel> for Option<ShortUser> {
     fn from(value: MatchPlayerModel) -> Self {
         value.user.map(|user| user.into())
     }

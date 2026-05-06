@@ -19,6 +19,19 @@ pub async fn get_user_by_username(app: &AppState, username: &str) -> eyre::Resul
         .await?)
 }
 
+pub async fn get_user_ranking(app: &AppState, user_id: impl TryInto<Uuid>) -> eyre::Result<Option<i64>> {
+    let Ok(user_id) = user_id.try_into() else { return Ok(None); };
+    let Some((elo,)): Option<(i32,)> = sqlx::query_as("SELECT elo FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(&app.pg)
+        .await? else { return Ok(None) };
+    let (rank,): (i64,) = sqlx::query_as("SELECT COUNT(*) + 1 AS rank FROM users WHERE elo > $1")
+        .bind(elo)
+        .fetch_one(&app.pg)
+        .await?;
+    Ok(Some(rank))
+}
+
 pub async fn update_competing_robot(app: &AppState, id: Uuid, robot_id: Option<Uuid>) -> eyre::Result<()> {
     sqlx::query("UPDATE users SET competing_robot_id = $1 WHERE id = $2")
         .bind(robot_id)

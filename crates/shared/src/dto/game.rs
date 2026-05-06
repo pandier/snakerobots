@@ -1,12 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{Direction, GameResult, dto::User};
+use crate::{Direction, GameResult, dto::ShortUser};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Match {
     pub id: String,
-    pub players: Vec<Option<User>>,
+    pub players: Vec<Option<ShortUser>>,
     pub played_at: DateTime<Utc>,
     pub winner: Option<String>,
     pub ranked: bool,
