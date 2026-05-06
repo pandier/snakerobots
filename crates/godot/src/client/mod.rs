@@ -93,6 +93,26 @@ impl SrClient {
     }
 
     #[func]
+    pub fn logout(&mut self) -> Gd<SrFuture> {
+        self.spawn_result(async move |mut self_gd| {
+            let mut this = self_gd.bind_mut();
+            let res = this
+                .client
+                .post("/auth/logout")
+                .parse_response()
+                .await;
+            this.set_auth(None, None);
+            res?; // try now so that auth is always set to None
+            Ok(())
+        })
+    }
+
+    fn set_auth(&mut self, token: Option<String>, user: Option<PrivateUser>) {
+        self.token.store(Arc::new(token));
+        self.user = user;
+    }
+
+    #[func]
     pub fn get_matches(&self, user_id: String) -> Gd<SrFuture> {
         self.spawn_result(async move |self_gd| {
             // TODO: injection o.o
@@ -281,12 +301,14 @@ impl SrClient {
     pub fn set_competing_robot(&self, id: Variant) -> Gd<SrFuture> {
         let competing_robot_id = if id.is_nil() { None } else { Some(id.to_string()) };
         self.spawn_result(async move |mut self_gd| {
-            self_gd.bind().client
+            let mut this = self_gd.bind_mut();
+            this
+                .client
                 .post("/users/me/competing-robot")
                 .body_json(&UpdateCompetingRobot { competing_robot_id })?
                 .parse_response()
                 .await?;
-            self_gd.bind_mut()
+            this
                 ._refetch_me()
                 .await?;
             Ok(())
@@ -307,11 +329,6 @@ impl SrClient {
             .await?;
         self.user = Some(user);
         Ok(())
-    }
-
-    fn set_auth(&mut self, token: Option<String>, user: Option<PrivateUser>) {
-        self.token.store(Arc::new(token));
-        self.user = user;
     }
 
     #[func]

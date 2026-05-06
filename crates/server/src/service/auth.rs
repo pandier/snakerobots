@@ -26,6 +26,14 @@ pub async fn create_session(app: &AppState, user_id: Uuid) -> eyre::Result<Sessi
         .await?)
 }
 
+pub async fn remove_session(app: &AppState, id: Uuid) -> eyre::Result<()> {
+    sqlx::query("DELETE FROM sessions WHERE id = $1")
+        .bind(id)
+        .execute(&app.pg)
+        .await?;
+    Ok(())
+}
+
 pub async fn cleanup_sessions(app: &AppState) -> ServiceResult<()> {
     sqlx::query("DELETE FROM sessions WHERE expires_at <= now()")
         .execute(&app.pg)

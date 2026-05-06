@@ -5,12 +5,13 @@ use eyre::Context;
 use snakerobots_shared::dto::auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse};
 use tracing::info;
 
-use crate::{http::error::{RouteError, RouteResult}, service, state::AppState};
+use crate::{http::{error::{RouteError, RouteResult}, extract::AuthedSession}, service, state::AppState};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
+        .route("/logout", post(logout))
 }
 
 async fn register(
@@ -21,7 +22,7 @@ async fn register(
         .await?;
     if let Some(user) = user {
         let session = service::auth::create_session(&app, user.id).await?;
-        info!(user_id=user.id.to_string(), username=&user.username, "register");
+        info!(user_id = ?user.id, sesion_id = ?session.id, username = &user.username, "register");
         Ok(Json(RegisterResponse {
             user: user.into(),
             token: session.id.to_string(),
@@ -43,7 +44,7 @@ async fn login(
             .wrap_err("failed to verify password")?;
         if verified {
             let session = service::auth::create_session(&app, user.id).await?;
-            info!(user_id=user.id.to_string(), expires_at=session.expires_at.to_string(), "login");
+            info!(user_id = ?user.id, session_id = ?session.id, expires_at = ?session.expires_at, "login");
             return Ok(Json(LoginResponse {
                 user: user.into(),
                 token: session.id.to_string(),
@@ -51,4 +52,13 @@ async fn login(
         }
     }
     Err(RouteError::new(StatusCode::UNAUTHORIZED, "invalid_credentials", "Invalid username or password"))
+}
+
+async fn logout(
+    State(app): State<Arc<AppState>>,
+    AuthedSession(session): AuthedSession,
+) -> RouteResult<()> {
+    service::auth::remove_session(&app, session.id).await?;
+    info!(user_id = ?session.user_id, session_id = ?session.id, "logout");
+    Ok(())
 }
