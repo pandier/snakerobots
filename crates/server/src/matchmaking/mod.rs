@@ -44,15 +44,19 @@ impl Matchmaker {
             .map(|(id, elo, robot_id)| MatchmakingEntry::new(id, elo, robot_id))
             .collect::<Vec<_>>();
 
-        info!("matching {} entries", entries.len());
+        info!("executing matchmaker for {} entries", entries.len());
 
         let mut queue = MatchmakingQueue::new(entries);
+        let mut count = 0usize;
 
         while let Some((a_entry, b_entry)) = queue.next_match() {
+            count += 1;
             let _ = self.create_match(a_entry, b_entry)
                 .await
                 .inspect_err(|e| error!("failed to match {} with {}: {:#}", a_entry.id, b_entry.id, e));
         }
+
+        info!("matched {} entries", count * 2);
 
         Ok(())
     }

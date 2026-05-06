@@ -93,7 +93,7 @@ pub async fn get_match_replay(app: &AppState, id: impl TryInto<Uuid>) -> Service
     Ok(row.map(|row| row.replay.0))
 } 
 
-pub async fn create_match(app: &AppState, replay: dto::GameReplay<Option<Uuid>>, elo: HashMap<Uuid, (i32, i32)>) -> ServiceResult<()> {
+pub async fn create_match(app: &AppState, replay: dto::GameReplay<Option<Uuid>>, elo: HashMap<Uuid, (f64, f64)>) -> ServiceResult<()> {
     let mut tx = app.pg.begin().await?;
 
     let winner = replay.winner().and_then(|snake| snake.metadata);
@@ -112,7 +112,7 @@ pub async fn create_match(app: &AppState, replay: dto::GameReplay<Option<Uuid>>,
     for snake in replay.snakes {
         if let Some(user_id) = snake.metadata {
             let (elo, elo_diff) = match elo.get(&user_id) {
-                Some((elo, elo_diff)) => (Some(elo), Some(elo_diff)),
+                Some((elo, elo_diff)) => (Some(*elo), Some(*elo_diff)),
                 None => (None, None),
             };
             sqlx::query("INSERT INTO match_players (match_id, user_id, elo, elo_diff) VALUES ($1, $2, $3, $4)")

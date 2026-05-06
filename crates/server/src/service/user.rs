@@ -54,23 +54,23 @@ pub async fn create_user(app: &AppState, username: String, password: String) -> 
 
 const ELO_K: f64 = 20f64;
 
-pub async fn update_elo(app: &AppState, user1: Uuid, user2: Uuid, winner: Option<Uuid>) -> eyre::Result<((i32, i32), (i32, i32))> {
+pub async fn update_elo(app: &AppState, user1: Uuid, user2: Uuid, winner: Option<Uuid>) -> eyre::Result<((f64, f64), (f64, f64))> {
     let mut tx = app.pg.begin().await?;
 
-    let (elo1,): (i32,) = sqlx::query_as("SELECT elo FROM users WHERE id = $1 FOR UPDATE")
+    let (elo1,): (f64,) = sqlx::query_as("SELECT elo FROM users WHERE id = $1 FOR UPDATE")
         .bind(user1)
         .fetch_one(&mut *tx)
         .await?;
 
-    let (elo2,): (i32,) = sqlx::query_as("SELECT elo FROM users WHERE id = $1 FOR UPDATE")
+    let (elo2,): (f64,) = sqlx::query_as("SELECT elo FROM users WHERE id = $1 FOR UPDATE")
         .bind(user2)
         .fetch_one(&mut *tx)
         .await?;
 
     // calculate the diff for user 1
     let score = winner.map(|w| if w == user1 { 1f64 } else { 0f64 }).unwrap_or(0.5f64);
-    let expected = 1f64 / (1f64 + 10f64.powf((elo2 - elo1) as f64 / 400f64));
-    let diff = (ELO_K * (score - expected)).round() as i32;
+    let expected = 1f64 / (1f64 + 10f64.powf((elo2 - elo1) / 400f64));
+    let diff = ELO_K * (score - expected);
 
     let new_elo1 = elo1 + diff;
     let new_elo2 = elo2 - diff;
@@ -94,7 +94,7 @@ pub async fn update_elo(app: &AppState, user1: Uuid, user2: Uuid, winner: Option
     Ok(((elo1, diff), (elo2, -diff)))
 }
 
-pub async fn get_users_for_matchmaking(app: &AppState, offset: i32, limit: i32) -> eyre::Result<Vec<(Uuid, i32, Uuid)>> {
+pub async fn get_users_for_matchmaking(app: &AppState, offset: i32, limit: i32) -> eyre::Result<Vec<(Uuid, f64, Uuid)>> {
     Ok(sqlx::query_as("SELECT id, elo, competing_robot_id FROM users WHERE competing_robot_id IS NOT NULL LIMIT $1 OFFSET $2")
         .bind(limit)
         .bind(offset)

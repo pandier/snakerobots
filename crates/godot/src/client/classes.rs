@@ -13,7 +13,7 @@ pub struct SrUser {
     #[var]
     pub created_at: i64,
     #[var]
-    pub elo: i32,
+    pub elo: f64,
 }
 
 #[godot_api]
@@ -57,7 +57,7 @@ pub struct SrPrivateUser {
     #[var]
     pub created_at: i64,
     #[var]
-    pub elo: i32,
+    pub elo: f64,
     #[var]
     pub competing_robot_id: Variant,
 }

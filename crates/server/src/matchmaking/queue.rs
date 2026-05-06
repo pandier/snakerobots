@@ -4,13 +4,13 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct MatchmakingEntry {
     pub id: Uuid,
-    pub elo: i32,
+    pub elo: f64,
     pub robot_id: Uuid,
     matched: bool,
 }
 
 impl MatchmakingEntry {
-    pub fn new(id: Uuid, elo: i32, robot_id: Uuid) -> Self {
+    pub fn new(id: Uuid, elo: f64, robot_id: Uuid) -> Self {
         Self {
             id,
             elo,
@@ -37,7 +37,7 @@ pub struct MatchmakingQueue {
 impl MatchmakingQueue {
 
     pub fn new(mut ranks: Vec<MatchmakingEntry>) -> Self {
-        ranks.sort_by_key(|x| x.elo);
+        ranks.sort_by(|a, b| a.elo.total_cmp(&b.elo));
 
         let mut queue = (0..ranks.len()).collect::<Vec<_>>();
 

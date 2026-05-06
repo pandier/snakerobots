@@ -11,7 +11,7 @@ pub struct UserModel {
     pub username: String,
     pub password: String,
     pub created_at: DateTime<Utc>,
-    pub elo: i32,
+    pub elo: f64,
     pub competing_robot_id: Option<Uuid>,
 }
 

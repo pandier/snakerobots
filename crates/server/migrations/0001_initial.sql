@@ -3,7 +3,7 @@ CREATE TABLE users (
     username VARCHAR(20) NOT NULL UNIQUE,
     password TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    elo INTEGER NOT NULL DEFAULT 1000
+    elo DOUBLE PRECISION NOT NULL DEFAULT 1000
 );
 
 CREATE TABLE robots (
@@ -31,8 +31,8 @@ CREATE TABLE match_players (
     id SERIAL PRIMARY KEY,
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    elo INTEGER,
-    elo_diff INTEGER
+    elo DOUBLE PRECISION,
+    elo_diff DOUBLE PRECISION
 );
 
 CREATE TABLE match_requests (
