@@ -12,6 +12,7 @@ pub struct MatchModel {
     pub winner: Option<Uuid>,
     pub aborted: bool,
     pub played_at: DateTime<Utc>,
+    pub ranked: bool,
 }
 
 impl MatchModel {
@@ -47,6 +48,7 @@ impl From<MatchWithPlayersModel> for dto::Match {
             players: value.players.into_iter().map(|player| player.into()).collect(),
             played_at: value.match_.played_at,
             winner: value.match_.winner.map(|uuid| uuid.to_string()),
+            ranked: value.match_.ranked,
         }
     }
 }

@@ -4,9 +4,7 @@ mod middleware;
 
 use arc_swap::ArcSwap;
 use godot::prelude::*;
-use snakerobots_shared::dto::{
-    self, DefaultGameReplay, Match, MatchRequest, User, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}
-};
+use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, UpdateCompetingRobot};
 use std::sync::Arc;
 use surf::{
     Url,
@@ -25,7 +23,7 @@ type Token = Arc<ArcSwap<Option<String>>>;
 pub struct SrClient {
     client: surf::Client,
     token: Token,
-    user: Option<User>,
+    user: Option<PrivateUser>,
     _base: Base<RefCounted>,
 }
 
@@ -87,7 +85,7 @@ impl SrClient {
                 .client
                 .get("/users/me")
                 .header(AUTHORIZATION, format!("Bearer {}", &token))
-                .parse_response_json::<User>()
+                .parse_response_json::<PrivateUser>()
                 .await?;
             this.set_auth(Some(token), Some(res));
             Ok(())
@@ -279,7 +277,39 @@ impl SrClient {
         })
     }
 
-    fn set_auth(&mut self, token: Option<String>, user: Option<User>) {
+    #[func]
+    pub fn set_competing_robot(&self, id: Variant) -> Gd<SrFuture> {
+        let competing_robot_id = if id.is_nil() { None } else { Some(id.to_string()) };
+        self.spawn_result(async move |mut self_gd| {
+            self_gd.bind().client
+                .post("/users/me/competing-robot")
+                .body_json(&UpdateCompetingRobot { competing_robot_id })?
+                .parse_response()
+                .await?;
+            self_gd.bind_mut()
+                ._refetch_me()
+                .await?;
+            Ok(())
+        })
+    }
+
+    #[func]
+    pub fn refetch_me(&self) -> Gd<SrFuture> {
+        self.spawn_result(async move |mut self_gd| {
+            self_gd.bind_mut()._refetch_me().await
+        })
+    }
+
+    pub async fn _refetch_me(&mut self) -> Result<(), SrClientError> {
+        let user = self.client
+            .get("/users/me")
+            .parse_response_json::<PrivateUser>()
+            .await?;
+        self.user = Some(user);
+        Ok(())
+    }
+
+    fn set_auth(&mut self, token: Option<String>, user: Option<PrivateUser>) {
         self.token.store(Arc::new(token));
         self.user = user;
     }
@@ -295,8 +325,8 @@ impl SrClient {
     }
 
     #[func]
-    pub fn get_me(&self) -> Option<Gd<SrUser>> {
-        self.user.as_ref().map(SrUser::create)
+    pub fn get_me(&self) -> Option<Gd<SrPrivateUser>> {
+        self.user.as_ref().map(SrPrivateUser::create)
     }
 
     #[func]

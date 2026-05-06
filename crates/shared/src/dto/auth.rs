@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::dto::User;
+use crate::dto::PrivateUser;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterRequest {
@@ -12,7 +12,7 @@ pub struct RegisterRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterResponse {
-    pub user: User,
+    pub user: PrivateUser,
     pub token: String,
 }
 
@@ -26,6 +26,6 @@ pub struct LoginRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoginResponse {
-    pub user: User,
+    pub user: PrivateUser,
     pub token: String,
 }

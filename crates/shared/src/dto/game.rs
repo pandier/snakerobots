@@ -9,6 +9,7 @@ pub struct Match {
     pub players: Vec<Option<User>>,
     pub played_at: DateTime<Utc>,
     pub winner: Option<String>,
+    pub ranked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

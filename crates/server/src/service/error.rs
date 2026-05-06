@@ -9,6 +9,8 @@ pub enum ServiceError {
     #[error("{0}")]
     AlreadyExists(String),
     #[error("{0}")]
+    UnknownForeign(String),
+    #[error("{0}")]
     LimitReached(String),
 }
 
@@ -17,6 +19,8 @@ impl From<sqlx::Error> for ServiceError {
         if let Some(database) = value.as_database_error() {
             if database.is_unique_violation() {
                 return Self::AlreadyExists(database.message().to_owned());
+            } else if database.is_foreign_key_violation() {
+                return Self::UnknownForeign(database.message().to_owned());
             } else if database.code().as_deref() == Some("23Z01") {
                 return Self::LimitReached(database.message().to_owned());
             }

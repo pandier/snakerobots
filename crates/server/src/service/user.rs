@@ -19,6 +19,15 @@ pub async fn get_user_by_username(app: &AppState, username: &str) -> eyre::Resul
         .await?)
 }
 
+pub async fn update_competing_robot(app: &AppState, id: Uuid, robot_id: Option<Uuid>) -> eyre::Result<()> {
+    sqlx::query("UPDATE users SET competing_robot_id = $1 WHERE id = $2")
+        .bind(robot_id)
+        .bind(id)
+        .execute(&app.pg)
+        .await?;
+    Ok(())
+}
+
 pub async fn create_user(app: &AppState, username: String, password: String) -> eyre::Result<Option<UserModel>> {
     let hashed_password = service::crypto::hash_password(password)
         .await

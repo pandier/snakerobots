@@ -11,6 +11,8 @@ pub struct UserModel {
     pub username: String,
     pub password: String,
     pub created_at: DateTime<Utc>,
+    pub elo: i32,
+    pub competing_robot_id: Option<Uuid>,
 }
 
 impl From<UserModel> for dto::User {
@@ -19,16 +21,30 @@ impl From<UserModel> for dto::User {
             id: value.id.to_string(),
             username: value.username,
             created_at: value.created_at,
+            elo: value.elo,
         }
     }
-
 }
+
+impl From<UserModel> for dto::PrivateUser {
+    fn from(value: UserModel) -> Self {
+        Self {
+            id: value.id.to_string(),
+            username: value.username,
+            created_at: value.created_at,
+            elo: value.elo,
+            competing_robot_id: value.competing_robot_id.map(|x| x.to_string()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, RowPlus, Deserialize)]
 #[rowplus(alias = "users")]
 pub struct PartialUserModel {
     pub id: Uuid,
     pub username: String,
     pub created_at: DateTime<Utc>,
+    pub elo: i32,
 }
 
 impl From<PartialUserModel> for dto::User {
@@ -37,6 +53,7 @@ impl From<PartialUserModel> for dto::User {
             id: value.id.to_string(),
             username: value.username,
             created_at: value.created_at,
+            elo: value.elo,
         }
     }
 }
