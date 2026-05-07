@@ -1,5 +1,5 @@
 use godot::prelude::*;
-use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchRequest, PrivateUser, Robot, ShortUser, User}, logic::robot::error::InfallibleRobotErrorHandler};
+use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchPlayer, MatchRequest, PrivateUser, Robot, ShortUser, User}, logic::robot::error::InfallibleRobotErrorHandler};
 
 use crate::game::timeline::GameTimeline;
 
@@ -87,7 +87,7 @@ pub struct SrMatch {
     #[var]
     pub played_at: i64,
     #[var]
-    pub players: Array<Option<Gd<SrShortUser>>>,
+    pub players: Array<Option<Gd<SrMatchPlayer>>>,
     #[var]
     pub ranked: bool,
 }
@@ -103,9 +103,38 @@ impl SrMatch {
             played_at: match_.played_at.timestamp(),
             players: match_.players.iter()
                 .map(|player| player.as_ref()
-                .map(SrShortUser::create))
+                .map(SrMatchPlayer::create))
                 .collect(),
             ranked: match_.ranked,
+        })
+    }
+}
+
+#[derive(GodotClass)]
+#[class(no_init, base=RefCounted)]
+pub struct SrMatchPlayer {
+    #[var]
+    pub id: GString,
+    #[var]
+    pub username: GString,
+    #[var]
+    pub elo: Variant,
+    #[var]
+    pub elo_diff: Variant,
+}
+
+#[godot_api]
+impl SrMatchPlayer {
+    pub fn create(value: &MatchPlayer) -> Gd<Self> {
+        Gd::from_object(Self {
+            id: value.id.to_godot(),
+            username: value.username.to_godot(),
+            elo: value.elo.as_ref()
+                .map(|elo| elo.value.to_variant())
+                .unwrap_or_else(Variant::nil),
+            elo_diff: value.elo.as_ref()
+                .map(|elo| elo.diff.to_variant())
+                .unwrap_or_else(Variant::nil),
         })
     }
 }

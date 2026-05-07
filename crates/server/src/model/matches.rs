@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use rowplus_derive::RowPlus;
-use snakerobots_shared::dto::{self, MatchRequest, ShortUser};
+use snakerobots_shared::dto::{self, MatchRequest};
 use sqlx::types::Uuid;
 
 use crate::model::PartialUserModel;
@@ -27,11 +27,20 @@ pub struct MatchPlayerModel {
     pub id: i32,
     #[rowplus(nested)]
     pub user: Option<PartialUserModel>,
+    pub elo: Option<f64>,
+    pub elo_diff: Option<f64>,
 }
 
-impl From<MatchPlayerModel> for Option<ShortUser> {
+impl From<MatchPlayerModel> for Option<dto::MatchPlayer> {
     fn from(value: MatchPlayerModel) -> Self {
-        value.user.map(|user| user.into())
+        value.user.map(|user| dto::MatchPlayer {
+            id: user.id.to_string(),
+            username: user.username,
+            elo: value.elo.and_then(|elo_value| value.elo_diff.map(|elo_diff| dto::MatchPlayerElo {
+                value: elo_value,
+                diff: elo_diff,
+            }))
+        })
     }
 }
 
@@ -45,7 +54,9 @@ impl From<MatchWithPlayersModel> for dto::Match {
     fn from(value: MatchWithPlayersModel) -> Self {
         Self {
             id: value.match_.id.to_string(),
-            players: value.players.into_iter().map(|player| player.into()).collect(),
+            players: value.players.into_iter()
+                .map(|player| player.into())
+                .collect(),
             played_at: value.match_.played_at,
             winner: value.match_.winner.map(|uuid| uuid.to_string()),
             ranked: value.match_.ranked,

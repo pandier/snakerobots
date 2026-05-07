@@ -1,15 +1,29 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{Direction, GameResult, dto::ShortUser};
+use crate::{Direction, GameResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Match {
     pub id: String,
-    pub players: Vec<Option<ShortUser>>,
+    pub players: Vec<Option<MatchPlayer>>,
     pub played_at: DateTime<Utc>,
     pub winner: Option<String>,
     pub ranked: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchPlayer {
+    pub id: String,
+    pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub elo: Option<MatchPlayerElo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchPlayerElo {
+    pub value: f64,
+    pub diff: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
