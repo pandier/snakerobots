@@ -16,8 +16,6 @@ impl SrLangLinter {
 
         let cursor = get_index(&code, line as usize, column as usize);
 
-        godot_warn!("cursor: {}", cursor);
-
         let (map, errors) = lang::lint(code.clone(), cursor);
 
         let completions = map.into_iter()

@@ -21,7 +21,7 @@ type Token = Arc<ArcSwap<Option<String>>>;
 #[derive(GodotClass)]
 #[class(base=RefCounted)]
 pub struct SrClient {
-    client: surf::Client,
+    client: Arc<surf::Client>,
     token: Token,
     user: Option<PrivateUser>,
     _base: Base<RefCounted>,
@@ -35,7 +35,7 @@ impl IRefCounted for SrClient {
             .expect("failed to create http client")
             .with(AuthorizationMiddleware(token.clone()));
         Self {
-            client,
+            client: Arc::new(client),
             token,
             user: None,
             _base,
@@ -47,61 +47,53 @@ impl IRefCounted for SrClient {
 impl SrClient {
     #[func]
     pub fn login(&self, username: String, password: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |mut self_gd| {
-            let mut this = self_gd.bind_mut();
+        self.spawn_result(async move |mut gd| {
             let req = LoginRequest { username, password };
-            let res = this
-                .client
+            let res = gd.bind().client()
                 .post("/auth/login")
                 .body_json(&req)?
                 .parse_response_json::<LoginResponse>()
                 .await?;
-            this.set_auth(Some(res.token), Some(res.user));
+            gd.bind_mut().set_auth(Some(res.token), Some(res.user));
             Ok(())
         })
     }
 
     #[func]
     pub fn register(&self, username: String, password: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |mut self_gd| {
-            let mut this = self_gd.bind_mut();
+        self.spawn_result(async move |mut gd| {
             let req = RegisterRequest { username, password };
-            let res = this
-                .client
+            let res = gd.bind().client()
                 .post("/auth/register")
                 .body_json(&req)?
                 .parse_response_json::<RegisterResponse>()
                 .await?;
-            this.set_auth(Some(res.token), Some(res.user));
+            gd.bind_mut().set_auth(Some(res.token), Some(res.user));
             Ok(())
         })
     }
 
     #[func]
     pub fn restore(&self, token: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |mut self_gd| {
-            let mut this = self_gd.bind_mut();
-            let res = this
-                .client
+        self.spawn_result(async move |mut gd| {
+            let res = gd.bind().client()
                 .get("/users/me")
                 .header(AUTHORIZATION, format!("Bearer {}", &token))
                 .parse_response_json::<PrivateUser>()
                 .await?;
-            this.set_auth(Some(token), Some(res));
+            gd.bind_mut().set_auth(Some(token), Some(res));
             Ok(())
         })
     }
 
     #[func]
     pub fn logout(&mut self) -> Gd<SrFuture> {
-        self.spawn_result(async move |mut self_gd| {
-            let mut this = self_gd.bind_mut();
-            let res = this
-                .client
+        self.spawn_result(async move |mut gd| {
+            let res = gd.bind().client()
                 .post("/auth/logout")
                 .parse_response()
                 .await;
-            this.set_auth(None, None);
+            gd.bind_mut().set_auth(None, None);
             res?; // try now so that auth is always set to None
             Ok(())
         })
@@ -114,9 +106,9 @@ impl SrClient {
 
     #[func]
     pub fn get_matches(&self, user_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
+        self.spawn_result(async move |gd| {
             // TODO: injection o.o
-            let res = self_gd.bind().client
+            let res = gd.bind().client()
                 .get(format!("/users/{}/matches", user_id))
                 .parse_response_json::<Vec<Match>>()
                 .await?;
@@ -128,9 +120,9 @@ impl SrClient {
 
     #[func]
     pub fn get_match(&self, match_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
+        self.spawn_result(async move |gd| {
             // TODO: injection o.o
-            let res = self_gd.bind().client
+            let res = gd.bind().client()
                 .get(format!("/matches/{}", match_id))
                 .parse_response_json::<Match>()
                 .await?;
@@ -140,9 +132,9 @@ impl SrClient {
 
     #[func]
     pub fn get_match_replay(&self, match_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
+        self.spawn_result(async move |gd| {
             // TODO: injection o.o
-            let res = self_gd.bind().client
+            let res = gd.bind().client()
                 .get(format!("/matches/{}/replay", match_id))
                 .parse_response_json::<DefaultGameReplay>()
                 .await?;
@@ -152,8 +144,8 @@ impl SrClient {
 
     #[func]
     pub fn get_match_requests(&self) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            let res = self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            let res = gd.bind().client()
                 .get("/match-requests")
                 .parse_response_json::<Vec<MatchRequest>>()
                 .await?;
@@ -165,9 +157,9 @@ impl SrClient {
 
     #[func]
     pub fn create_match_request(&self, username: String, robot_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
+        self.spawn_result(async move |gd| {
             let req = CreateMatchRequest { username, robot_id };
-            let res = self_gd.bind().client
+            let res = gd.bind().client()
                 .post("/match-requests")
                 .body_json(&req)?
                 .parse_response_json::<MatchRequest>()
@@ -178,9 +170,9 @@ impl SrClient {
 
     #[func]
     pub fn accept_match_request(&self, sender_id: String, robot_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
+        self.spawn_result(async move |gd| {
             let req = AcceptMatchRequest { sender_id, robot_id };
-            let _ = self_gd.bind().client
+            let _ = gd.bind().client()
                 .post("/match-requests/accept")
                 .body_json(&req)?
                 .parse_response()
@@ -191,14 +183,14 @@ impl SrClient {
 
     #[func]
     pub fn delete_match_request(&self, sender_id: String, receiver_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            self_gd.bind()._delete_match_request(sender_id, receiver_id).await
+        self.spawn_result(async move |gd| {
+            Self::_delete_match_request(gd, sender_id, receiver_id).await
         })
     }
 
-    pub async fn _delete_match_request(&self, sender_id: String, receiver_id: String) -> Result<(), SrClientError> {
+    pub async fn _delete_match_request(gd: Gd<Self>, sender_id: String, receiver_id: String) -> Result<(), SrClientError> {
         let req = DeleteMatchRequest { sender_id, receiver_id };
-        let _ = self.client
+        let _ = gd.bind().client()
             .delete("/match-requests")
             .body_json(&req)?
             .parse_response()
@@ -209,26 +201,28 @@ impl SrClient {
 
     #[func]
     pub fn cancel_match_request(&self, receiver_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            let this = self_gd.bind();
-            let user = this.user.as_ref().ok_or(SrClientError::unauthorized())?;
-            this._delete_match_request(user.id.clone(), receiver_id).await
+        self.spawn_result(async move |gd| {
+            let id = gd.bind().user.as_ref()
+                .map(|user| user.id.clone())
+                .ok_or(SrClientError::unauthorized())?;
+            Self::_delete_match_request(gd, id, receiver_id).await
         })
     }
 
     #[func]
     pub fn decline_match_request(&self, sender_id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            let this = self_gd.bind();
-            let user = this.user.as_ref().ok_or(SrClientError::unauthorized())?;
-            this._delete_match_request(sender_id, user.id.clone()).await
+        self.spawn_result(async move |gd| {
+            let id = gd.bind().user.as_ref()
+                .map(|user| user.id.clone())
+                .ok_or(SrClientError::unauthorized())?;
+            Self::_delete_match_request(gd, sender_id, id).await
         })
     }
 
     #[func]
     pub fn get_user(&self, id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            let res = self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            let res = gd.bind().client()
                 .get(format!("/users/{}", id))
                 .parse_response_json::<dto::User>()
                 .await?;
@@ -238,8 +232,8 @@ impl SrClient {
 
     #[func]
     pub fn get_user_ranking(&self, id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            let res = self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            let res = gd.bind().client()
                 .get(format!("/users/{}/ranking", id))
                 .parse_response_json::<dto::UserRanking>()
                 .await?;
@@ -249,8 +243,8 @@ impl SrClient {
 
     #[func]
     pub fn get_robots(&self) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            let res = self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            let res = gd.bind().client()
                 .get("/robots")
                 .parse_response_json::<Vec<dto::Robot>>()
                 .await?;
@@ -263,8 +257,8 @@ impl SrClient {
     #[func]
     pub fn get_robot(&self, id: String) -> Gd<SrFuture> {
         // TODO: injection o.o
-        self.spawn_result(async move |self_gd| {
-            let res = self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            let res = gd.bind().client()
                 .get(format!("/robots/{}", id))
                 .parse_response_json::<dto::Robot>()
                 .await?;
@@ -274,9 +268,9 @@ impl SrClient {
 
     #[func]
     pub fn create_robot(&self, name: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
+        self.spawn_result(async move |gd| {
             let req = CreateRobot { name };
-            let res = self_gd.bind().client
+            let res = gd.bind().client()
                 .post("/robots")
                 .body_json(&req)?
                 .parse_response_json::<dto::Robot>()
@@ -287,8 +281,8 @@ impl SrClient {
 
     #[func]
     pub fn delete_robot(&self, id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            gd.bind().client()
                 .delete(format!("/robots/{}", id))
                 .parse_response()
                 .await?;
@@ -298,8 +292,8 @@ impl SrClient {
 
     #[func]
     pub fn upload_robot(&self, id: String, code: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            gd.bind().client()
                 .post(format!("/robots/{}/upload", id))
                 .body_string(code)
                 .parse_response()
@@ -310,8 +304,8 @@ impl SrClient {
 
     #[func]
     pub fn download_robot(&self, id: String) -> Gd<SrFuture> {
-        self.spawn_result(async move |self_gd| {
-            let res = self_gd.bind().client
+        self.spawn_result(async move |gd| {
+            let res = gd.bind().client()
                 .post(format!("/robots/{}/download", id))
                 .parse_response()
                 .await?;
@@ -322,17 +316,13 @@ impl SrClient {
     #[func]
     pub fn set_competing_robot(&self, id: Variant) -> Gd<SrFuture> {
         let competing_robot_id = if id.is_nil() { None } else { Some(id.to_string()) };
-        self.spawn_result(async move |mut self_gd| {
-            let mut this = self_gd.bind_mut();
-            this
-                .client
+        self.spawn_result(async move |gd| {
+            gd.bind().client()
                 .post("/users/me/competing-robot")
                 .body_json(&UpdateCompetingRobot { competing_robot_id })?
                 .parse_response()
                 .await?;
-            this
-                ._refetch_me()
-                .await?;
+            Self::_refetch_me(gd).await?;
             Ok(())
         })
     }
@@ -344,8 +334,8 @@ impl SrClient {
         #[opt(default = 25)] page_size: i64,
     ) -> Gd<SrFuture> {
         let offset = page * page_size;
-        self.spawn_result(async move |mut self_gd| {
-            let res = self_gd.bind_mut().client
+        self.spawn_result(async move |gd| {
+            let res = gd.bind().client()
                 .get("/leaderboard")
                 .query(&LeaderboardQuery { offset: Some(offset), limit: Some(page_size) })?
                 .parse_response_json::<Vec<dto::LeaderboardUser>>()
@@ -356,17 +346,17 @@ impl SrClient {
 
     #[func]
     pub fn refetch_me(&self) -> Gd<SrFuture> {
-        self.spawn_result(async move |mut self_gd| {
-            self_gd.bind_mut()._refetch_me().await
+        self.spawn_result(async move |gd| {
+            Self::_refetch_me(gd).await
         })
     }
 
-    pub async fn _refetch_me(&mut self) -> Result<(), SrClientError> {
-        let user = self.client
+    pub async fn _refetch_me(mut gd: Gd<Self>) -> Result<(), SrClientError> {
+        let user = gd.bind().client()
             .get("/users/me")
             .parse_response_json::<PrivateUser>()
             .await?;
-        self.user = Some(user);
+        gd.bind_mut().user = Some(user);
         Ok(())
     }
 
@@ -398,8 +388,8 @@ impl SrClient {
     where
         T: ToGodot + 'static,
     {
-        self.spawn_gd(async move |self_gd| {
-            let result = f(self_gd).await
+        self.spawn_gd(async move |gd| {
+            let result = f(gd).await
                 .map_err(|err| Gd::from_object(err));
             SrResult::from(result)
         })
@@ -410,8 +400,13 @@ impl SrClient {
     where
         T: ToGodot + 'static,
     {
-        let self_gd = self.to_gd();
-        AsyncRuntime::spawn_gd(async move { f(self_gd).await })
+        let gd = self.to_gd();
+        AsyncRuntime::spawn_gd(async move { f(gd).await })
+    }
+
+    #[inline]
+    fn client(&self) -> Arc<surf::Client> {
+        self.client.clone()
     }
 
     #[inline]
