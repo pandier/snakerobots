@@ -2,7 +2,7 @@ use eyre::Context;
 use sqlx::types::Uuid;
 use tracing::debug;
 
-use crate::{model::UserModel, service, state::AppState};
+use crate::{model::{UserModel, user::LeaderboardUserModel}, service, state::AppState};
 
 pub async fn get_user(app: &AppState, user_id: impl TryInto<Uuid>) -> eyre::Result<Option<UserModel>> {
     let Ok(user_id) = user_id.try_into() else { return Ok(None); };
@@ -25,7 +25,7 @@ pub async fn get_user_ranking(app: &AppState, user_id: impl TryInto<Uuid>) -> ey
         .bind(user_id)
         .fetch_optional(&app.pg)
         .await? else { return Ok(None) };
-    let (rank,): (i64,) = sqlx::query_as("SELECT COUNT(*) + 1 AS rank FROM users WHERE elo > $1")
+    let (rank,): (i64,) = sqlx::query_as("SELECT COUNT(*) + 1 AS rank FROM users WHERE elo > $1 AND ranked")
         .bind(elo)
         .fetch_one(&app.pg)
         .await?;
@@ -75,13 +75,13 @@ pub async fn update_elo(app: &AppState, user1: Uuid, user2: Uuid, winner: Option
     let new_elo1 = elo1 + diff;
     let new_elo2 = elo2 - diff;
 
-    sqlx::query("UPDATE users SET elo = $1 WHERE id = $2")
+    sqlx::query("UPDATE users SET elo = $1, ranked = TRUE WHERE id = $2")
         .bind(new_elo1)
         .bind(user1)
         .execute(&mut *tx)
         .await?;
 
-    sqlx::query("UPDATE users SET elo = $1 WHERE id = $2")
+    sqlx::query("UPDATE users SET elo = $1, ranked = TRUE WHERE id = $2")
         .bind(new_elo2)
         .bind(user2)
         .execute(&mut *tx)
@@ -96,6 +96,14 @@ pub async fn update_elo(app: &AppState, user1: Uuid, user2: Uuid, winner: Option
 
 pub async fn get_users_for_matchmaking(app: &AppState, offset: i32, limit: i32) -> eyre::Result<Vec<(Uuid, f64, Uuid)>> {
     Ok(sqlx::query_as("SELECT id, elo, competing_robot_id FROM users WHERE competing_robot_id IS NOT NULL LIMIT $1 OFFSET $2")
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&app.pg)
+        .await?)
+}
+
+pub async fn get_user_leaderboard(app: &AppState, offset: i64, limit: i64) -> eyre::Result<Vec<LeaderboardUserModel>> {
+    Ok(sqlx::query_as("SELECT id, username, elo, RANK() OVER (ORDER BY elo DESC, id) AS rank FROM users WHERE ranked LIMIT $1 OFFSET $2")
         .bind(limit)
         .bind(offset)
         .fetch_all(&app.pg)

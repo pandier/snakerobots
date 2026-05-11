@@ -16,6 +16,7 @@ smol = "2.0"
 rand = "0.10"
 surf = "2.3"
 arc-swap = "1.8"
+serde = "1.0"
 serde_json = "1.0"
 
 [build-dependencies]

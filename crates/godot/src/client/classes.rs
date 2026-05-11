@@ -1,5 +1,5 @@
 use godot::prelude::*;
-use snakerobots_shared::{dto::{DefaultGameReplay, Match, MatchPlayer, MatchRequest, PrivateUser, Robot, ShortUser, User}, logic::robot::error::InfallibleRobotErrorHandler};
+use snakerobots_shared::{dto::{DefaultGameReplay, LeaderboardUser, Match, MatchPlayer, MatchRequest, PrivateUser, Robot, ShortUser, User}, logic::robot::error::InfallibleRobotErrorHandler};
 
 use crate::game::timeline::GameTimeline;
 
@@ -73,6 +73,31 @@ impl SrPrivateUser {
             competing_robot_id: user.competing_robot_id.as_ref()
                 .map(|x| x.to_variant())
                 .unwrap_or_else(Variant::nil),
+        })
+    }
+}
+
+#[derive(GodotClass)]
+#[class(no_init, base=RefCounted)]
+pub struct SrLeaderboardUser {
+    #[var]
+    pub id: GString,
+    #[var]
+    pub username: GString,
+    #[var]
+    pub elo: f64,
+    #[var]
+    pub rank: i64,
+}
+
+#[godot_api]
+impl SrLeaderboardUser {
+    pub fn create(user: LeaderboardUser) -> Gd<Self> {
+        Gd::from_object(Self {
+            id: user.id.to_godot(),
+            username: user.username.to_godot(),
+            elo: user.elo,
+            rank: user.rank,
         })
     }
 }

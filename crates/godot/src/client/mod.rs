@@ -4,7 +4,8 @@ mod middleware;
 
 use arc_swap::ArcSwap;
 use godot::prelude::*;
-use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, UpdateCompetingRobot};
+use serde::Serialize;
+use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, UpdateCompetingRobot, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, user::LeaderboardQuery};
 use std::sync::Arc;
 use surf::{
     Url,
@@ -334,6 +335,23 @@ impl SrClient {
                 ._refetch_me()
                 .await?;
             Ok(())
+        })
+    }
+
+    #[func]
+    pub fn get_leaderboard(
+        &self,
+        #[opt(default = 0)] page: i64,
+        #[opt(default = 25)] page_size: i64,
+    ) -> Gd<SrFuture> {
+        let offset = page * page_size;
+        self.spawn_result(async move |mut self_gd| {
+            let res = self_gd.bind_mut().client
+                .get("/leaderboard")
+                .query(&LeaderboardQuery { offset: Some(offset), limit: Some(page_size) })?
+                .parse_response_json::<Vec<dto::LeaderboardUser>>()
+                .await?;
+            Ok(res.into_iter().map(SrLeaderboardUser::create).collect::<Vec<_>>())
         })
     }
 

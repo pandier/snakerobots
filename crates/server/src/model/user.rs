@@ -53,3 +53,22 @@ impl From<PartialUserModel> for dto::ShortUser {
         }
     }
 }
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct LeaderboardUserModel {
+    pub id: Uuid,
+    pub username: String,
+    pub elo: f64,
+    pub rank: i64,
+}
+
+impl From<LeaderboardUserModel> for dto::LeaderboardUser {
+    fn from(value: LeaderboardUserModel) -> Self {
+        Self {
+            id: value.id.to_string(),
+            username: value.username,
+            elo: value.elo,
+            rank: value.rank,
+        }
+    }
+}

@@ -12,4 +12,4 @@ pub use game::{Game, GameSnake, Match, MatchPlayer, MatchPlayerElo};
 pub use match_request::{MatchRequest};
 pub use replay::{DefaultGameReplay, GameReplay, SnakeReplay};
 pub use robot::Robot;
-pub use user::{ShortUser, User, PrivateUser, UserRanking, UpdateCompetingRobot};
+pub use user::{ShortUser, User, PrivateUser, UserRanking, UpdateCompetingRobot, LeaderboardUser};
