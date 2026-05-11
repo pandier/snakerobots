@@ -1,6 +1,6 @@
 use godot::prelude::*;
 use snakerobots_shared::{
-    lang::{error::context::ErrorContext as LangErrorContext, util::either::Either},
+    lang::{error::context::{ErrorContext as LangErrorContext, SpanType}, util::either::Either},
     logic::{self, Robot, robot::{error::PropagatingRobotErrorHandler, impls::PathfindRobot, lang::{LangRobot, LangRobotError}}}
 };
 use crate::{SrResult, game::timeline::GameTimeline};
@@ -149,8 +149,8 @@ pub struct SrLocalGameErrorSpan {
 
 impl SrLocalGameErrorSpan {
     pub fn from_context<T>(ctx: &LangErrorContext<T>, code: &str) -> Option<Self> {
-        match ctx.span {
-            Either::Left(span) => {
+        match ctx.span_type {
+            SpanType::SEGMENT(span) => {
                 let (line_from, column_from) = get_line_and_column(code, span.from)?;
                 let (line_to, column_to) = get_line_and_column(code, span.to)?;
 
@@ -163,7 +163,7 @@ impl SrLocalGameErrorSpan {
                     char_to: span.to as i64,
                 })
             },
-            Either::Right(l) => {
+            SpanType::LINE(l) => {
                 let mut i = 0;
                 let mut c = 0;
                 let mut len = 0;
@@ -193,6 +193,7 @@ impl SrLocalGameErrorSpan {
                     })
                 }
             },
+            SpanType::UNKNOWN => None
         }
     }
 }

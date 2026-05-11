@@ -1,3 +1,5 @@
+use tropaion::interpreter::interpreter_builder::InterpreterBuilder;
+
 use crate::{Direction, Point, logic::{Robot, robot::RobotResult}, lang::{
     error::{runtime_error::RuntimeError, context::ErrorContext},
     interpreter::interpreter::Interpreter,
@@ -49,7 +51,10 @@ impl LangRobot {
 
         let compiled = crate::lang::compile(code)
             .map_err(|err| LangRobotError::Compile(err))?;
-        let interpreter = Interpreter::new(compiled.clone());
+        let interpreter = InterpreterBuilder::new(compiled.clone())
+            .stack_size(1_000)
+            .heap_size(10_000)
+            .build();
 
         Ok(Self {
             interpreter,
@@ -77,7 +82,7 @@ impl Robot for LangRobot {
             ],
             &mut std::io::stdout(),
         )
-        .map_err(|err| LangRobotError::Runtime(err))?;
+        .map_err(|err| LangRobotError::Runtime(err.context))?;
 
         let dir_int = blob.next_int()
             .map_err(|e| LangRobotError::Return(e))?;
