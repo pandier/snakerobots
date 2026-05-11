@@ -4,7 +4,6 @@ mod middleware;
 
 use arc_swap::ArcSwap;
 use godot::prelude::*;
-use serde::Serialize;
 use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, UpdateCompetingRobot, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, user::LeaderboardQuery};
 use std::sync::Arc;
 use surf::{

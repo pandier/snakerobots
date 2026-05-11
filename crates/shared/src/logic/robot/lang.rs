@@ -8,7 +8,8 @@ use crate::{Direction, Point, logic::{Robot, robot::RobotResult}, lang::{
 
 use super::RobotContext;
 
-const LIB_CODE: &str = r#"
+pub const LIB_CODE: &str = r#"
+
 struct Point(
     x: int,
     y: int,
@@ -46,8 +47,7 @@ pub struct LangRobot {
 
 impl LangRobot {
     pub fn compile(mut code: String) -> Result<Self, LangRobotError> {
-        code += "\n\n";
-        code += LIB_CODE.trim();
+        code += LIB_CODE;
 
         let compiled = crate::lang::compile(code)
             .map_err(|err| LangRobotError::Compile(err))?;
