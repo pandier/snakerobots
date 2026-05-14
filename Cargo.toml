@@ -4,5 +4,8 @@ members = [
     "crates/godot",
     "crates/server",
     "crates/shared",
-    "crates/rowplus"
-, "crates/rowplus-derive"]
+    "crates/rowplus",
+    "crates/rowplus-derive",
+    "crates/shared-backend",
+    "crates/worker"
+]

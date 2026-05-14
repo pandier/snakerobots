@@ -1,33 +1,28 @@
 use std::{env::VarError, str::FromStr, time::Duration};
 
-use chrono::TimeDelta;
 use eyre::Context;
-use snakerobots_shared_backend::queue::MatchQueue;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
-pub struct AppState {
-    pub dev_token: Option<String>,
-    pub session_timeout: TimeDelta,
-    pub matchmaker_interval: Option<Duration>,
+#[derive(Clone)]
+pub struct AppConfig {
+    pub worker_interval: Duration,
+    pub max_game_count: usize,
     pub shutdown: CancellationToken,
     pub pg: PgPool,
-    pub match_queue: MatchQueue,
 }
 
-impl AppState {
-    pub async fn new() -> eyre::Result<AppState> {
+impl AppConfig {
+    pub async fn new() -> eyre::Result<AppConfig> {
         match dotenvy::dotenv() {
             Err(e) if !e.not_found() => Err(e).wrap_err("failed to load .env file")?,
             _ => {},
         }
 
-        let dev_token = env_optional("DEV_TOKEN")?;
-        let session_timeout = TimeDelta::seconds(env("SESSION_TIMEOUT")?);
-        let matchmaker_interval = env_optional::<i64>("MATCHMAKER_INTERVAL")?
-            .filter(|x| *x >= 0)
-            .map(|x| Duration::from_secs(x as u64));
+        let worker_interval = Duration::from_secs(env::<u64>("WORKER_INTERVAL")?);
+        let max_game_count = env::<usize>("WORKER_MAX_GAMES")?;
+
         let pg_url = env::<String>("DATABASE_URL")?;
 
         let pg = PgPoolOptions::new()
@@ -38,12 +33,10 @@ impl AppState {
         let shutdown = CancellationToken::new();
         tokio::spawn(shutdown_signal(shutdown.clone()));
 
-        Ok(AppState {
-            dev_token,
-            session_timeout,
-            matchmaker_interval,
+        Ok(AppConfig {
+            worker_interval,
+            max_game_count,
             shutdown,
-            match_queue: MatchQueue::new(pg.clone()),
             pg,
         })
     }

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::{Json, Router, extract::State, http::StatusCode, routing::{delete, get, post}};
 use eyre::Context;
 use snakerobots_shared::dto::match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest, MatchRequest};
+use snakerobots_shared_backend::queue::{QueuedMatchDetails, QueuedMatchDetailsPlayer};
 use sqlx::types::Uuid;
 
 use crate::{http::{error::{RouteError, RouteResult}, extract::AuthedUser}, service::{self, error::ServiceError}, state::AppState};
@@ -92,9 +93,13 @@ async fn accept_match_request(
         return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
     };
 
-    let robot_code = service::robot::download_robot(&app, user_id, payload.robot_id)
-        .await?
-        .ok_or_else(|| RouteError::new(StatusCode::BAD_REQUEST, "unknown_robot", "The specified robot does not exist"))?;
+    let Ok(robot_id) = Uuid::try_from(payload.robot_id) else {
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
+    };
+
+    if !service::robot::exists_robot(&app, user_id, robot_id).await? {
+        return Err(RouteError::new(StatusCode::BAD_REQUEST, "unknown_robot", "The specified robot does not exist"));
+    }
 
     let match_req = service::matches::delete_match_request(&app, sender_id, user_id)
         .await?
@@ -103,10 +108,21 @@ async fn accept_match_request(
     let sender_robot_id = match_req.sender_robot_id
         .ok_or_else(|| RouteError::new(StatusCode::CONFLICT, "robot_deleted", "One of the robots has been deleted since the creation of the match request"))?;
 
-    let sender_robot_code = service::robot::download_robot(&app, sender_id, sender_robot_id).await?
-        .ok_or_else(|| RouteError::new(StatusCode::CONFLICT, "robot_deleted", "One of the robots has been deleted since the creation of the match request"))?;
+    let details = QueuedMatchDetails {
+        ranked: false,
+        players: vec![
+            QueuedMatchDetailsPlayer {
+                id: sender_id,
+                robot_id: sender_robot_id,
+            },
+            QueuedMatchDetailsPlayer {
+                id: user_id,
+                robot_id: robot_id,
+            },
+        ],
+    };
 
-    service::game::queue_game(app.clone(), sender_id, sender_robot_code, user_id, robot_code, false);
+    service::match_queue::queue_match(&app, details).await?;
 
     Ok(StatusCode::ACCEPTED)
 }

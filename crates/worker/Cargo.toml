@@ -1,0 +1,22 @@
+[package]
+name = "snakerobots-worker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+snakerobots-shared = { path = "../shared", features = ["lang"] }
+snakerobots-shared-backend = { path = "../shared-backend" }
+
+tokio = { version = "1.49", features = ["full"] }
+tokio-util = "0.7"
+
+sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio", "uuid"] }
+
+uuid = { version = "1.22", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+eyre = "0.6"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features=["env-filter"] }
+dotenvy = "0.15"

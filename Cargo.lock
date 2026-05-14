@@ -2817,6 +2817,7 @@ dependencies = [
  "rowplus-derive",
  "serde",
  "snakerobots-shared",
+ "snakerobots-shared-backend",
  "sqlx",
  "thiserror 2.0.18",
  "tokio",
@@ -2836,6 +2837,37 @@ dependencies = [
  "rand 0.10.0",
  "serde",
  "tropaion",
+]
+
+[[package]]
+name = "snakerobots-shared-backend"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "snakerobots-shared",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "snakerobots-worker"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dotenvy",
+ "eyre",
+ "snakerobots-shared",
+ "snakerobots-shared-backend",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
@@ -3636,6 +3668,7 @@ version = "1.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a68d3c8f01c0cfa54a75291d83601161799e4a89a39e0929f4b0354d88757a37"
 dependencies = [
+ "getrandom 0.4.1",
  "js-sys",
  "serde_core",
  "wasm-bindgen",

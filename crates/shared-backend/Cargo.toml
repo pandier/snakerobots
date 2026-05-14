@@ -1,0 +1,17 @@
+[package]
+name = "snakerobots-shared-backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+snakerobots-shared = { path = "../shared", features = ["lang"] }
+
+tokio = { version = "1.49", features = ["full"] }
+
+sqlx = { version = "0.8", features = ["chrono", "postgres", "runtime-tokio", "uuid"] }
+
+serde = { version = "1.0", features = ["derive"] }
+uuid = { version = "1.22", features = ["serde"] }
+
+thiserror = "2.0"
+tracing = "0.1"

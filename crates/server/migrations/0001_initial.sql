@@ -52,6 +52,15 @@ CREATE TABLE sessions (
     expires_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE match_queue (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    queued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    details JSON NOT NULL,
+    expires_at TIMESTAMPTZ,
+    worker_id UUID,
+    result JSON
+);
+
 -- Enforce the match request limit
 CREATE FUNCTION enforce_match_request_limit() RETURNS TRIGGER AS $$
     BEGIN

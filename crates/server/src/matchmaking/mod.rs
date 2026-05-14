@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use eyre::Context;
+use snakerobots_shared_backend::queue::{QueuedMatchDetails, QueuedMatchDetailsPlayer};
 use tokio::time::{Instant, sleep};
 use tracing::{debug, error, info, instrument};
 
@@ -44,19 +46,22 @@ impl Matchmaker {
             .map(|(id, elo, robot_id)| MatchmakingEntry::new(id, elo, robot_id))
             .collect::<Vec<_>>();
 
-        info!("executing matchmaker for {} entries", entries.len());
+        debug!("executing matchmaker for {} entries", entries.len());
 
         let mut queue = MatchmakingQueue::new(entries);
         let mut count = 0usize;
 
         while let Some((a_entry, b_entry)) = queue.next_match() {
             count += 1;
+
             let _ = self.create_match(a_entry, b_entry)
                 .await
                 .inspect_err(|e| error!("failed to match {} with {}: {:#}", a_entry.id, b_entry.id, e));
         }
 
-        info!("matched {} entries", count * 2);
+        if count > 0 {
+            info!("matched {} entries", count * 2);
+        }
 
         Ok(())
     }
@@ -65,17 +70,23 @@ impl Matchmaker {
     async fn create_match(&self, a_entry: &MatchmakingEntry, b_entry: &MatchmakingEntry) -> eyre::Result<()> {
         debug!("matched");
 
-        let Some(a_code) = service::robot::download_robot(&self.app, a_entry.id, a_entry.robot_id).await? else {
-            debug!("skipping because robot for A is missing");
-            return Ok(());
+        let details = QueuedMatchDetails {
+            ranked: true,
+            players: vec![
+                QueuedMatchDetailsPlayer {
+                    id: a_entry.id,
+                    robot_id: a_entry.robot_id,
+                },
+                QueuedMatchDetailsPlayer {
+                    id: b_entry.id,
+                    robot_id: b_entry.robot_id,
+                },
+            ],
         };
 
-        let Some(b_code) = service::robot::download_robot(&self.app, b_entry.id, b_entry.robot_id).await? else {
-            debug!("skipping because robot for B is missing");
-            return Ok(());
-        };
-
-        service::game::queue_game(self.app.clone(), a_entry.id, a_code, b_entry.id, b_code, true);
+        service::match_queue::queue_match(&self.app, details)
+            .await
+            .wrap_err("failed to queue match")?;
 
         Ok(())
     }

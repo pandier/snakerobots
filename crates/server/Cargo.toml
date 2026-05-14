@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-snakerobots-shared = { path = "../shared", features = ["lang"] }
+snakerobots-shared = { path = "../shared" }
+snakerobots-shared-backend = { path = "../shared-backend" }
 
 tokio = { version = "1.49", features = ["full"] }
 futures = "0.3"
