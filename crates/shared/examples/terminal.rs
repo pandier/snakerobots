@@ -1,10 +1,8 @@
 use std::{thread::sleep, time::{Duration, Instant}};
 use rand::RngExt;
-use snakerobots_shared::{logic::{
-    standard::create_standard_game,
-    robot::{error::PropagatingRobotErrorHandler, lang::LangRobot, impls::PathfindRobot},
-    Grid, GridCell
-}, Point, Size};
+use snakerobots_shared::{Point, Size, logic::{
+    Grid, GridCell, robot::{error::PropagatingRobotErrorHandler, impls::PathfindRobot, lang::{DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST, DEFAULT_STACK_SIZE, LangRobot}}, standard::create_standard_game
+}};
 
 fn fmt_cell(space: &GridCell) -> String {
     match space {
@@ -64,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             return Direction.LEFT;
         }
-    "#.to_owned())?;
+    "#.to_owned(), DEFAULT_STACK_SIZE, DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST)?;
 
     let mut game = create_standard_game(Box::new(lang_robot), Some(Box::new(PathfindRobot::new())), Some(seed));
 

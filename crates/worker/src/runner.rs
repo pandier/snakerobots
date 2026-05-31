@@ -1,6 +1,6 @@
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
-use snakerobots_shared::{dto::GameReplay, logic::robot::lang::LangRobot};
+use snakerobots_shared::{dto::GameReplay, logic::robot::lang::{DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST, DEFAULT_STACK_SIZE, LangRobot}};
 use sqlx::types::Uuid;
 use tokio::{sync::mpsc, time::Instant};
 use tracing::{debug, info, warn};
@@ -28,10 +28,10 @@ async fn run_game(player1: Uuid, code1: String, player2: Uuid, code2: String, mu
 fn run_game_blocking(player1: Uuid, code1: String, player2: Uuid, code2: String, cancelled: &AtomicBool) -> Option<GameReplay<Uuid>> {
     debug!("compiling code");
 
-    let robot1 = LangRobot::compile(code1)
+    let robot1 = LangRobot::compile(code1, DEFAULT_STACK_SIZE, DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST)
         .inspect_err(|err| warn!("failed to compile code of player 1: {}", err))
         .ok()?;
-    let robot2 = LangRobot::compile(code2)
+    let robot2 = LangRobot::compile(code2, DEFAULT_STACK_SIZE, DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST)
         .inspect_err(|err| warn!("failed to compile code of player 2: {}", err))
         .ok()?;
 

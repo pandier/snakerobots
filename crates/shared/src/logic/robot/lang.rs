@@ -41,19 +41,24 @@ struct Game(
 );
 "#;
 
+pub const DEFAULT_STACK_SIZE: usize = 1_000;
+pub const DEFAULT_HEAP_SIZE: usize = 10_000;
+pub const DEFAULT_MAX_INSTRUCTION_COST: usize = 1_000_000;
+
 pub struct LangRobot {
     interpreter: Interpreter,
 }
 
 impl LangRobot {
-    pub fn compile(mut code: String) -> Result<Self, LangRobotError> {
+    pub fn compile(mut code: String, stack_size: usize, heap_size: usize, max_inst_cost: usize) -> Result<Self, LangRobotError> {
         code += LIB_CODE;
 
         let compiled = crate::lang::compile(code)
             .map_err(|err| LangRobotError::Compile(err))?;
         let interpreter = InterpreterBuilder::new(compiled.clone())
-            .stack_size(1_000)
-            .heap_size(10_000)
+            .stack_size(stack_size)
+            .heap_size(heap_size)
+            .max_instruction_cost(max_inst_cost)
             .build();
 
         Ok(Self {

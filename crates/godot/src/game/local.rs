@@ -1,5 +1,5 @@
 use godot::prelude::*;
-use snakerobots_shared::logic::{self, Robot, robot::{error::PropagatingRobotErrorHandler, impls::PathfindRobot, lang::LangRobot}};
+use snakerobots_shared::logic::{self, Robot, robot::{error::PropagatingRobotErrorHandler, impls::PathfindRobot, lang::{DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST, DEFAULT_STACK_SIZE, LangRobot}}};
 use crate::{SrResult, game::{error::SrLangError, timeline::GameTimeline}};
 
 #[derive(GodotConvert, Var, Export, Default, Clone, Copy)]
@@ -20,6 +20,15 @@ pub struct SrLocalGame {
     pub opponent: SrLocalGameOpponent,
     #[var]
     pub opponent_code: GString,
+    #[var]
+    #[init(val = DEFAULT_STACK_SIZE as i64)]
+    pub stack_size: i64,
+    #[var]
+    #[init(val = DEFAULT_HEAP_SIZE as i64)]
+    pub heap_size: i64,
+    #[var]
+    #[init(val = DEFAULT_MAX_INSTRUCTION_COST as i64)]
+    pub max_instruction_cost: i64,
     #[var]
     #[init(val = logic::standard::STANDARD_WIDTH)]
     pub width: i32,
@@ -42,17 +51,20 @@ impl SrLocalGame {
         let code = String::from(&self.code);
         let opponent = self.opponent;
         let opponent_code = String::from(&self.opponent_code);
+        let stack_size = self.stack_size as usize;
+        let heap_size = self.heap_size as usize;
+        let max_inst_cost = self.max_instruction_cost as usize;
 
         SrResult::run(|| {
-            let robot = LangRobot::compile(code.clone())
+            let robot = LangRobot::compile(code.clone(), stack_size, heap_size, max_inst_cost)
                 .map_err(|err| super::error::convert_lang_error(&code, &err).to_variant())?;
 
             let opponent: Option<Box<dyn Robot>> = match opponent {
                 SrLocalGameOpponent::Simple => Some(Box::new(PathfindRobot::new())),
-                SrLocalGameOpponent::Mirror => Some(Box::new(LangRobot::compile(code.clone())
-                    .map_err(|_| super::error::create_error("failed to compile mirror opponent").to_variant())?)),
-                SrLocalGameOpponent::Code => Some(Box::new(LangRobot::compile(opponent_code)
-                    .map_err(|_| super::error::create_error("failed to compile code opponent").to_variant())?)),
+                SrLocalGameOpponent::Mirror => Some(Box::new(LangRobot::compile(code.clone(), stack_size, heap_size, max_inst_cost)
+                    .map_err(|_| super::error::create_error("Failed to compile mirror opponent").to_variant())?)),
+                SrLocalGameOpponent::Code => Some(Box::new(LangRobot::compile(opponent_code, stack_size, heap_size, max_inst_cost)
+                    .map_err(|_| super::error::create_error("Failed to compile code opponent").to_variant())?)),
             };
 
             let game = logic::standard::create_standard_game_with_size(

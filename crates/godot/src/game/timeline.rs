@@ -122,7 +122,7 @@ impl GameTimeline {
     #[func]
     pub fn get_next_snakes(&self) -> Array<Gd<GameSnake>> {
         if self.time >= self.length {
-            return Array::new();
+            return self.get_snakes();
         }
 
         let mut next_snakes = self.snakes.clone();
