@@ -1,5 +1,5 @@
 use crate::http::error::{RouteError, RouteResult};
-use crate::http::extract::AuthedUser;
+use crate::http::extract::{AuthedUser, ValidatedJson};
 use crate::service;
 use crate::service::error::ServiceError;
 use crate::state::AppState;
@@ -46,7 +46,7 @@ async fn get_robot(
 async fn create_robot(
     State(app): State<Arc<AppState>>,
     AuthedUser(user_id): AuthedUser,
-    Json(create_robot): Json<CreateRobot>,
+    ValidatedJson(create_robot): ValidatedJson<CreateRobot>,
 ) -> RouteResult<(StatusCode, Json<Robot>)> {
     let result = service::robot::create_robot(&app, user_id, &create_robot.name).await;
     match result {
@@ -73,7 +73,7 @@ async fn rename_robot(
     State(app): State<Arc<AppState>>,
     AuthedUser(user_id): AuthedUser,
     Path(robot_id): Path<String>,
-    Json(rename_robot): Json<RenameRobot>,
+    ValidatedJson(rename_robot): ValidatedJson<RenameRobot>,
 ) -> RouteResult<()> {
     let success = service::robot::rename_robot(&app, user_id, robot_id, &rename_robot.name).await?;
     if success {

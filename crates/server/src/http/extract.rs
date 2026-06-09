@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
-use axum::{extract::FromRequestParts, http::{StatusCode, header::AUTHORIZATION}};
+use axum::{Json, extract::{FromRequest, FromRequestParts, Query, rejection::{JsonRejection, QueryRejection}}, http::{StatusCode, header::AUTHORIZATION}};
+use serde::de::DeserializeOwned;
 use sqlx::types::Uuid;
+use validator::Validate;
 
 use crate::{http::error::RouteError, model::SessionModel, service, state::AppState};
 
@@ -34,5 +36,45 @@ impl FromRequestParts<Arc<AppState>> for AuthedUser
     async fn from_request_parts(parts: &mut axum::http::request::Parts, state: &Arc<AppState>) -> Result<Self, Self::Rejection> {
         let session = AuthedSession::from_request_parts(parts, state).await?;
         Ok(AuthedUser(session.0.user_id))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidatedJson<T>(pub T);
+
+impl<T> FromRequest<Arc<AppState>> for ValidatedJson<T>
+where
+    T: DeserializeOwned + Validate
+{
+    type Rejection = Result<JsonRejection, RouteError>;
+
+    async fn from_request(req: axum::extract::Request, state: &Arc<AppState>) -> Result<Self, Self::Rejection> {
+        let value: Json<T> = Json::from_request(req, state).await
+            .map_err(|e| Ok(e))?;
+
+        value.0.validate()
+            .map_err(|e| Err(RouteError::validation(Box::new(e))))?;
+
+        Ok(Self(value.0))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidatedQuery<T>(pub T);
+
+impl<T> FromRequestParts<Arc<AppState>> for ValidatedQuery<T>
+where
+    T: DeserializeOwned + Validate
+{
+    type Rejection = Result<QueryRejection, RouteError>;
+
+    async fn from_request_parts(parts: &mut axum::http::request::Parts, state: &Arc<AppState>) -> Result<Self, Self::Rejection> {
+        let value: Query<T> = Query::from_request_parts(parts, state).await
+            .map_err(|e| Ok(e))?;
+
+        value.0.validate()
+            .map_err(|e| Err(RouteError::validation(Box::new(e))))?;
+
+        Ok(Self(value.0))
     }
 }

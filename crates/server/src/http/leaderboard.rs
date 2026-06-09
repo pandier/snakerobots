@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use axum::{Json, Router, extract::{Query, State}, routing::get};
+use axum::{Json, Router, extract::State, routing::get};
 use snakerobots_shared::dto::{LeaderboardUser, user::LeaderboardQuery};
 
-use crate::{http::error::RouteResult, service, state::AppState};
+use crate::{http::{error::RouteResult, extract::ValidatedQuery}, service, state::AppState};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -12,7 +12,7 @@ pub fn router() -> Router<Arc<AppState>> {
 
 async fn get_leaderboard(
     State(app): State<Arc<AppState>>,
-    Query(query): Query<LeaderboardQuery>,
+    ValidatedQuery(query): ValidatedQuery<LeaderboardQuery>,
 ) -> RouteResult<Json<Vec<LeaderboardUser>>> {
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(20);

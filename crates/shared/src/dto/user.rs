@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShortUser {
@@ -34,11 +35,13 @@ pub struct UpdateCompetingRobot {
     pub competing_robot_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct LeaderboardQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[validate(range(min = 0, message = "Offset cannot be negative"))]
     pub offset: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[validate(range(min = 1, max = 100, message = "Limit must be between 1 and 100"))]
     pub limit: Option<i64>,
 }
 

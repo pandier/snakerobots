@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer};
+use validator::ValidationError;
 
 pub mod directions {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -21,34 +21,18 @@ pub mod directions {
     }
 }
 
-pub fn username<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let mut s = String::deserialize(deserializer)?;
-    let len = s.len();
-    if len < 3 || len > 20 {
-        Err(serde::de::Error::custom("username must be between 3 and 20 characters"))
-    } else if !s.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        Err(serde::de::Error::custom("username can only consist of a-z, 0-9 and _"))
+pub fn validate_username_chars(value: &str) -> Result<(), ValidationError> {
+    if value.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        Ok(())
     } else {
-        s.make_ascii_lowercase();
-        Ok(s)
+        Err(ValidationError::new("chars"))
     }
 }
 
-pub fn password<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    let len = s.len();
-    if len < 8 || len > 128 {
-        Err(serde::de::Error::custom("password must be between 8 and 128 characters"))
-    } else if !s.chars().all(|c| !c.is_control()) {
-        Err(serde::de::Error::custom("password contains illegal characters"))
+pub fn validate_non_control_chars(value: &str) -> Result<(), ValidationError> {
+    if value.chars().all(|c| !c.is_control()) {
+        Ok(())
     } else {
-        Ok(s)
+        Err(ValidationError::new("chars"))
     }
 }
- 

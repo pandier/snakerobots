@@ -5,7 +5,7 @@ use eyre::Context;
 use snakerobots_shared::dto::auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse};
 use tracing::info;
 
-use crate::{http::{error::{RouteError, RouteResult}, extract::AuthedSession}, service, state::AppState};
+use crate::{http::{error::{RouteError, RouteResult}, extract::{AuthedSession, ValidatedJson}}, service, state::AppState};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -16,7 +16,7 @@ pub fn router() -> Router<Arc<AppState>> {
 
 async fn register(
     State(app): State<Arc<AppState>>,
-    Json(payload): Json<RegisterRequest>,
+    ValidatedJson(payload): ValidatedJson<RegisterRequest>,
 ) -> RouteResult<Json<RegisterResponse>> {
     let user = service::user::create_user(&app, payload.username, payload.password)
         .await?;
@@ -34,7 +34,7 @@ async fn register(
 
 async fn login(
     State(app): State<Arc<AppState>>,
-    Json(payload): Json<LoginRequest>,
+    ValidatedJson(payload): ValidatedJson<LoginRequest>,
 ) -> RouteResult<Json<LoginResponse>> {
     let user = service::user::get_user_by_username(&app, &payload.username)
         .await?;

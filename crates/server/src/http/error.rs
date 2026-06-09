@@ -1,6 +1,7 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
 use snakerobots_shared::dto;
 use tracing::error;
+use validator::{ValidationErrors, ValidationErrorsKind};
 
 pub type RouteResult<T> = Result<T, RouteError>;
 
@@ -33,6 +34,11 @@ impl RouteError {
             report: Some(report),
         }
     }
+
+    pub fn validation(errors: Box<ValidationErrors>) -> Self {
+        let message = first_message_from_validation(errors).unwrap_or_else(|| String::from("Invalid input"));
+        Self::new(StatusCode::BAD_REQUEST, "validation", &message)
+    }
 }
 
 impl IntoResponse for RouteError {
@@ -45,9 +51,39 @@ impl IntoResponse for RouteError {
     }
 }
 
-
 impl<T: Into<Box<dyn std::error::Error>>> From<T> for RouteError {
     fn from(value: T) -> Self {
-        Self::internal(value.into())
+        let e = value.into();
+        match e.downcast::<ValidationErrors>() {
+            Ok(e) => Self::validation(e),
+            Err(e) => Self::internal(e),
+        }
     }
+}
+
+fn first_message_from_validation(errors: Box<ValidationErrors>) -> Option<String> {
+    for (_, k) in errors.into_errors() {
+        match k {
+            ValidationErrorsKind::Field(errors) => {
+                for e in errors {
+                    if let Some(message) = e.message {
+                        return Some(message.into_owned());
+                    }
+                }
+            },
+            ValidationErrorsKind::List(list) => {
+                for (_, errors) in list {
+                    if let Some(message) = first_message_from_validation(errors) {
+                        return Some(message);
+                    }
+                }
+            },
+            ValidationErrorsKind::Struct(errors) => {
+                if let Some(message) = first_message_from_validation(errors) {
+                    return Some(message);
+                }
+            },
+        }
+    }
+    None
 }

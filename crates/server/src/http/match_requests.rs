@@ -6,7 +6,7 @@ use snakerobots_shared::dto::match_request::{AcceptMatchRequest, CreateMatchRequ
 use snakerobots_shared_backend::queue::{QueuedMatchDetails, QueuedMatchDetailsPlayer};
 use sqlx::types::Uuid;
 
-use crate::{http::{error::{RouteError, RouteResult}, extract::AuthedUser}, service::{self, error::ServiceError}, state::AppState};
+use crate::{http::{error::{RouteError, RouteResult}, extract::{AuthedUser, ValidatedJson}}, service::{self, error::ServiceError}, state::AppState};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -30,7 +30,7 @@ async fn get_match_requests(
 async fn create_match_request(
     State(app): State<Arc<AppState>>,
     AuthedUser(user_id): AuthedUser,
-    Json(payload): Json<CreateMatchRequest>,
+    ValidatedJson(payload): ValidatedJson<CreateMatchRequest>,
 ) -> RouteResult<Json<MatchRequest>> {
     let Ok(robot_id) = Uuid::try_from(payload.robot_id) else {
         return Err(RouteError::new(StatusCode::BAD_REQUEST, "invalid_id", "Invalid id"));
