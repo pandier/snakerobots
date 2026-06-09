@@ -13,3 +13,8 @@ pub struct Robot {
 pub struct CreateRobot {
     pub name: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RenameRobot {
+    pub name: String
+}

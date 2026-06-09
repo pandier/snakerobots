@@ -63,3 +63,13 @@ pub struct SrGenericError {
     #[var]
     pub message: GString,
 }
+
+#[godot_api]
+impl SrGenericError {
+    #[func]
+    pub fn create(message: GString) -> Gd<Self> {
+        Gd::from_object(Self {
+            message
+        })
+    } 
+}

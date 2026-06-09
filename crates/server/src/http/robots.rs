@@ -7,7 +7,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
-use snakerobots_shared::dto::robot::CreateRobot;
+use snakerobots_shared::dto::robot::{CreateRobot, RenameRobot};
 use snakerobots_shared::dto::Robot;
 use std::sync::Arc;
 
@@ -17,6 +17,7 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/", post(create_robot))
         .route("/{id}", get(get_robot))
         .route("/{id}", delete(delete_robot))
+        .route("/{id}/rename", post(rename_robot))
         .route("/{id}/upload", post(upload_robot))
         .route("/{id}/download", post(download_robot))
 }
@@ -61,6 +62,20 @@ async fn delete_robot(
     Path(robot_id): Path<String>,
 ) -> RouteResult<()> {
     let success = service::robot::delete_robot(&app, user_id, robot_id).await?;
+    if success {
+        Ok(())
+    } else {
+        Err(RouteError::not_found())
+    }
+}
+
+async fn rename_robot(
+    State(app): State<Arc<AppState>>,
+    AuthedUser(user_id): AuthedUser,
+    Path(robot_id): Path<String>,
+    Json(rename_robot): Json<RenameRobot>,
+) -> RouteResult<()> {
+    let success = service::robot::rename_robot(&app, user_id, robot_id, &rename_robot.name).await?;
     if success {
         Ok(())
     } else {

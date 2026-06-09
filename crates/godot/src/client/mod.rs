@@ -4,7 +4,7 @@ mod middleware;
 
 use arc_swap::ArcSwap;
 use godot::prelude::*;
-use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, UpdateCompetingRobot, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, user::LeaderboardQuery};
+use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, UpdateCompetingRobot, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, robot::RenameRobot, user::LeaderboardQuery};
 use std::sync::Arc;
 use surf::{
     Url,
@@ -284,6 +284,18 @@ impl SrClient {
         self.spawn_result(async move |gd| {
             gd.bind().client()
                 .delete(format!("/robots/{}", id))
+                .parse_response()
+                .await?;
+            Ok(())
+        })
+    }
+
+    #[func]
+    pub fn rename_robot(&self, id: String, name: String) -> Gd<SrFuture> {
+        self.spawn_result(async move |gd| {
+            gd.bind().client()
+                .post(format!("/robots/{}/rename", id))
+                .body_json(&RenameRobot { name })?
                 .parse_response()
                 .await?;
             Ok(())

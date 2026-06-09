@@ -47,6 +47,17 @@ pub async fn delete_robot(app: &AppState, user_id: Uuid, id: impl TryInto<Uuid>)
     Ok(res.rows_affected() > 0)
 }
 
+pub async fn rename_robot(app: &AppState, user_id: Uuid, id: impl TryInto<Uuid>, name: &str) -> ServiceResult<bool> {
+    let Ok(id) = id.try_into() else { return Ok(false); };
+    let res = sqlx::query("UPDATE robots SET name = $1 WHERE id = $2 AND user_id = $3")
+        .bind(name)
+        .bind(id)
+        .bind(user_id)
+        .execute(&app.pg)
+        .await?;
+    Ok(res.rows_affected() > 0)
+}
+
 pub async fn upload_robot(app: &AppState, user_id: Uuid, id: impl TryInto<Uuid>, code: &str) -> ServiceResult<bool> {
     let Ok(id) = id.try_into() else { return Ok(false); };
     let res = sqlx::query("UPDATE robots SET code = $1, edited_at = NOW() WHERE id = $2 AND user_id = $3")
