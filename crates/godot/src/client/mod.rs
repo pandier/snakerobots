@@ -4,7 +4,7 @@ mod middleware;
 
 use arc_swap::ArcSwap;
 use godot::prelude::*;
-use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, UpdateCompetingRobot, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, robot::RenameRobot, user::LeaderboardQuery};
+use snakerobots_shared::dto::{self, DefaultGameReplay, Match, MatchRequest, PrivateUser, UpdateCompetingRobot, auth::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse}, match_request::{AcceptMatchRequest, CreateMatchRequest, DeleteMatchRequest}, robot::RenameRobot, user::{LeaderboardQuery, LeaderboardResponse, MatchesResponse, UserMatchesQuery}};
 use std::sync::Arc;
 use surf::{
     Url,
@@ -19,7 +19,7 @@ use crate::{
 type Token = Arc<ArcSwap<Option<String>>>;
 
 #[derive(GodotClass)]
-#[class(base=RefCounted)]
+#[class(no_init, base=RefCounted)]
 pub struct SrClient {
     client: Arc<surf::Client>,
     token: Token,
@@ -28,23 +28,21 @@ pub struct SrClient {
 }
 
 #[godot_api]
-impl IRefCounted for SrClient {
-    fn init(_base: Base<RefCounted>) -> Self {
+impl SrClient {
+    #[func]
+    pub fn create(url: String, dev_token: bool) -> Gd<SrClient> {
         let token = Arc::new(ArcSwap::new(Arc::new(None)));
-        let client = Self::create_client()
+        let client = Self::create_client(&url, dev_token)
             .expect("failed to create http client")
             .with(AuthorizationMiddleware(token.clone()));
-        Self {
+        Gd::from_init_fn(|_base| Self {
             client: Arc::new(client),
             token,
             user: None,
             _base,
-        }
+        })
     }
-}
 
-#[godot_api]
-impl SrClient {
     #[func]
     pub fn login(&self, username: String, password: String) -> Gd<SrFuture> {
         self.spawn_result(async move |mut gd| {
@@ -105,16 +103,23 @@ impl SrClient {
     }
 
     #[func]
-    pub fn get_matches(&self, user_id: String) -> Gd<SrFuture> {
+    pub fn get_matches(
+        &self,
+        user_id: String,
+        ranked: Variant,
+        #[opt(default = 0)] page: i64,
+        #[opt(default = 25)] page_size: i64,
+    ) -> Gd<SrFuture> {
+        let ranked = ranked.try_to::<bool>().ok();
+        let offset = page * page_size;
         self.spawn_result(async move |gd| {
             // TODO: injection o.o
             let res = gd.bind().client()
                 .get(format!("/users/{}/matches", user_id))
-                .parse_response_json::<Vec<Match>>()
+                .query(&UserMatchesQuery { ranked, offset: Some(offset), limit: Some(page_size) })?
+                .parse_response_json::<MatchesResponse>()
                 .await?;
-            Ok(res.into_iter()
-                .map(|req| SrMatch::create(req))
-                .collect::<Array<_>>())
+            Ok(SrMatches::create(res))
         })
     }
 
@@ -350,9 +355,9 @@ impl SrClient {
             let res = gd.bind().client()
                 .get("/leaderboard")
                 .query(&LeaderboardQuery { offset: Some(offset), limit: Some(page_size) })?
-                .parse_response_json::<Vec<dto::LeaderboardUser>>()
+                .parse_response_json::<LeaderboardResponse>()
                 .await?;
-            Ok(res.into_iter().map(SrLeaderboardUser::create).collect::<Vec<_>>())
+            Ok(SrLeaderboard::create(res))
         })
     }
 
@@ -368,7 +373,12 @@ impl SrClient {
             .get("/users/me")
             .parse_response_json::<PrivateUser>()
             .await?;
-        gd.bind_mut().user = Some(user);
+        let mut this = gd.bind_mut();
+        if let Some(old_user) = &this.user {
+            if *old_user.id == user.id {
+                this.user = Some(user);
+            }
+        }
         Ok(())
     }
 
@@ -422,14 +432,13 @@ impl SrClient {
     }
 
     #[inline]
-    fn create_client() -> Result<surf::Client, Box<dyn std::error::Error>> {
-        #[cfg(not(feature = "dev-api"))]
-        let config = surf::Config::new().set_base_url(Url::parse(env!("API_URL"))?);
+    fn create_client(url: &str, dev_token: bool) -> Result<surf::Client, Box<dyn std::error::Error>> {
+        let mut config = surf::Config::new()
+            .set_base_url(Url::parse(url)?);
 
-        #[cfg(feature = "dev-api")]
-        let config = surf::Config::new()
-            .set_base_url(Url::parse(env!("DEV_API_URL"))?)
-            .add_header("X-Dev-Token", env!("DEV_TOKEN"))?;
+        if dev_token {
+            config = config.add_header("X-Dev-Token", env!("DEV_TOKEN"))?;
+        }
 
         Ok(config.try_into()?)
     }

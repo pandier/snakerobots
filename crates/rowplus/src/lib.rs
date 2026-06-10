@@ -41,7 +41,8 @@ impl<T: RowPlus> RowPlusNested for T {
 impl<T: RowPlus> RowPlusNested for Option<T> {
     fn columns_nested(table: &str) -> RowPlusColumns {
         let mut cols = RowPlusColumns::new();
-        cols.add_raw(&format!("\"{}\" IS NOT NULL", table), (String::from(table) + "$Option").as_str());
+        // .id is a "temporary" fix...
+        cols.add_raw(&format!("\"{}\".id IS NOT NULL", table), (String::from(table) + "$Option").as_str());
         cols.append(T::columns_nested(table));
         cols
     }

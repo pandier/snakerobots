@@ -102,6 +102,13 @@ pub async fn get_users_for_matchmaking(app: &AppState, offset: i32, limit: i32) 
         .await?)
 }
 
+pub async fn count_competing_users(app: &AppState) -> eyre::Result<i64> {
+    let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users WHERE ranked")
+        .fetch_one(&app.pg)
+        .await?;
+    Ok(count)
+}
+
 pub async fn get_user_leaderboard(app: &AppState, offset: i64, limit: i64) -> eyre::Result<Vec<LeaderboardUserModel>> {
     Ok(sqlx::query_as("SELECT id, username, elo, RANK() OVER (ORDER BY elo DESC, id) AS rank FROM users WHERE ranked LIMIT $1 OFFSET $2")
         .bind(limit)

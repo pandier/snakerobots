@@ -1,5 +1,5 @@
 use godot::prelude::*;
-use snakerobots_shared::{dto::{DefaultGameReplay, LeaderboardUser, Match, MatchPlayer, MatchRequest, PrivateUser, Robot, ShortUser, User}, logic::robot::error::InfallibleRobotErrorHandler};
+use snakerobots_shared::{dto::{DefaultGameReplay, LeaderboardUser, Match, MatchPlayer, MatchRequest, PrivateUser, Robot, ShortUser, User, user::{LeaderboardResponse, MatchesResponse}}, logic::robot::error::InfallibleRobotErrorHandler};
 
 use crate::game::timeline::GameTimeline;
 
@@ -73,6 +73,28 @@ impl SrPrivateUser {
             competing_robot_id: user.competing_robot_id.as_ref()
                 .map(|x| x.to_variant())
                 .unwrap_or_else(Variant::nil),
+        })
+    }
+}
+
+#[derive(GodotClass)]
+#[class(no_init, base=RefCounted)]
+pub struct SrLeaderboard {
+    #[var]
+    pub total: i64,
+    #[var]
+    pub users: Array<Gd<SrLeaderboardUser>>,
+}
+
+#[godot_api]
+impl SrLeaderboard {
+    pub fn create(leaderboard: LeaderboardResponse) -> Gd<Self> {
+        Gd::from_object(Self {
+            total: leaderboard.total,
+            users: leaderboard.users
+                .into_iter()
+                .map(|u| SrLeaderboardUser::create(u))
+                .collect::<Array<_>>(),
         })
     }
 }
@@ -184,6 +206,28 @@ impl SrMatchReplay {
         let timeline = GameTimeline::evaluate::<InfallibleRobotErrorHandler>(game)
             .expect("infallible");
         Gd::from_object(timeline)
+    }
+}
+
+#[derive(GodotClass)]
+#[class(no_init, base=RefCounted)]
+pub struct SrMatches {
+    #[var]
+    pub total: i64,
+    #[var]
+    pub matches: Array<Gd<SrMatch>>,
+}
+
+#[godot_api]
+impl SrMatches {
+    pub fn create(value: MatchesResponse) -> Gd<Self> {
+        Gd::from_object(Self {
+            total: value.total,
+            matches: value.matches
+                .into_iter()
+                .map(|req| SrMatch::create(req))
+                .collect::<Array<_>>(),
+        })
     }
 }
 

@@ -45,20 +45,28 @@ pub async fn get_match(app: &AppState, id: impl TryInto<Uuid>) -> ServiceResult<
     Ok(result)
 }
 
-pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>) -> ServiceResult<Vec<MatchWithPlayersModel>> {
+pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>, ranked: Option<bool>, offset: i64, limit: i64) -> ServiceResult<Vec<MatchWithPlayersModel>> {
     let Ok(user_id) = user_id.try_into() else { return Ok(vec![]); };
     let rows = query_plus!(
         PlayerWithMatchRow,
         r#"
-            SELECT {} FROM match_players filter
-            JOIN matches "match" ON "match".id = filter.match_id
+            WITH "match" AS (
+                SELECT m.* FROM matches m
+                JOIN match_players mp ON mp.match_id = m.id AND mp.user_id = $1 AND ($2 IS NULL OR m.ranked = $2)
+                ORDER BY m.played_at DESC
+                LIMIT $3
+                OFFSET $4
+            )
+            SELECT {} FROM "match"
             JOIN match_players ON match_players.match_id = "match".id
             JOIN users "user" ON "user".id = match_players.user_id
-            WHERE filter.user_id = $1
-            ORDER BY "match".id
+            ORDER BY "match".played_at DESC
         "#
     )
     .bind(user_id)
+    .bind(ranked)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&app.pg)
     .await?;
 
@@ -75,6 +83,22 @@ pub async fn get_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>) ->
     }
 
     Ok(result)
+}
+
+pub async fn count_matches_by_user(app: &AppState, user_id: impl TryInto<Uuid>, ranked: Option<bool>) -> ServiceResult<i64> {
+    let Ok(user_id) = user_id.try_into() else { return Ok(0); };
+    let (count,): (i64,) = sqlx::query_as(
+        r#"
+            SELECT COUNT(*) FROM matches m
+            JOIN match_players mp ON mp.match_id = m.id AND mp.user_id = $1 AND ($2 IS NULL OR m.ranked = $2)
+        "#
+    )
+    .bind(user_id)
+    .bind(ranked)
+    .fetch_one(&app.pg)
+    .await?;
+
+    Ok(count)
 }
 
 pub async fn get_match_replay(app: &AppState, id: impl TryInto<Uuid>) -> ServiceResult<Option<dto::DefaultGameReplay>> {

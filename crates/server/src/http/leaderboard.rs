@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, routing::get};
-use snakerobots_shared::dto::{LeaderboardUser, user::LeaderboardQuery};
+use snakerobots_shared::dto::user::{LeaderboardQuery, LeaderboardResponse};
 
 use crate::{http::{error::RouteResult, extract::ValidatedQuery}, service, state::AppState};
 
@@ -13,7 +13,7 @@ pub fn router() -> Router<Arc<AppState>> {
 async fn get_leaderboard(
     State(app): State<Arc<AppState>>,
     ValidatedQuery(query): ValidatedQuery<LeaderboardQuery>,
-) -> RouteResult<Json<Vec<LeaderboardUser>>> {
+) -> RouteResult<Json<LeaderboardResponse>> {
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(20);
     let users = service::user::get_user_leaderboard(&app, offset, limit)
@@ -21,5 +21,6 @@ async fn get_leaderboard(
         .into_iter()
         .map(|u| u.into())
         .collect();
-    Ok(Json(users))
+    let total = service::user::count_competing_users(&app).await?;
+    Ok(Json(LeaderboardResponse { total, users }))
 }

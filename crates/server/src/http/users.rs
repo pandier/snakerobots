@@ -1,14 +1,13 @@
 use crate::http::error::{RouteError, RouteResult};
-use crate::http::extract::AuthedUser;
+use crate::http::extract::{AuthedUser, ValidatedQuery};
 use crate::service;
 use crate::state::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use snakerobots_shared::dto::user::UpdateCompetingRobot;
+use snakerobots_shared::dto::user::{UpdateCompetingRobot, UserMatchesQuery, MatchesResponse};
 use snakerobots_shared::dto::{PrivateUser, User, UserRanking};
-use snakerobots_shared::dto::game::{Match};
 use uuid::Uuid;
 use std::sync::Arc;
 
@@ -34,13 +33,17 @@ async fn get_user(
 async fn get_user_matches(
     State(app): State<Arc<AppState>>,
     Path(user_id): Path<String>,
-) -> RouteResult<Json<Vec<Match>>> {
-    let matches = service::matches::get_matches_by_user(&app, user_id)
+    ValidatedQuery(query): ValidatedQuery<UserMatchesQuery>,
+) -> RouteResult<Json<MatchesResponse>> {
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(20);
+    let matches = service::matches::get_matches_by_user(&app, user_id.clone(), query.ranked, offset, limit)
         .await?
         .into_iter()
         .map(|m| m.into())
         .collect();
-    Ok(Json(matches))
+    let total = service::matches::count_matches_by_user(&app, user_id, query.ranked).await?;
+    Ok(Json(MatchesResponse { total, matches }))
 }
 
 async fn get_user_ranking(

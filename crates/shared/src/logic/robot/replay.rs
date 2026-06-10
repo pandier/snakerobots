@@ -16,8 +16,11 @@ impl ReplayRobot {
 
 impl Robot for ReplayRobot {
     fn step(&mut self, _ctx: RobotContext) -> RobotResult {
-        self.moves.get(self.index)
-            .cloned()
-            .ok_or_else(|| "replay finished".into())
+        if let Some(direction) = self.moves.get(self.index) {
+            self.index += 1;
+            Ok(*direction)
+        } else {
+            Err("replay finished".into())
+        }
     }
 }
