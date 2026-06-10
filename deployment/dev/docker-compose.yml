@@ -27,7 +27,7 @@ services:
       RUST_LOG: debug
       DATABASE_URL: postgres://devuser:devpass@db:5432/snakerobots
       SESSION_TIMEOUT: 3600
-      MATCHMAKER_INTERVAL: 30
+      MATCHMAKER_INTERVAL: 600
       MIGRATE: false
     env_file:
       - .env
