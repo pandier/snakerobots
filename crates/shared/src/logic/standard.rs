@@ -2,7 +2,7 @@ use rand::RngExt;
 
 use crate::{Direction, Point, Size, logic::{Game, Player, Robot, Snake}};
 
-pub const STANDARD_WIDTH: i32 = 18;
+pub const STANDARD_WIDTH: i32 = 14;
 pub const STANDARD_HEIGHT: i32 = 11;
 pub const STANDARD_APPLE_COUNT: usize = 1;
 pub const MINIMUM_WIDTH: i32 = 7;
