@@ -465,7 +465,7 @@ impl ParseResponse for surf::Response {
         } else if let Ok(error) = serde_json::from_str::<dto::Error>(&body) {
             Err(SrClientError::new(&error.error, &error.message))
         } else {
-            Err(SrClientError::unknown(&format!("{}: {}", self.status(), body)))
+            Err(SrClientError::unknown(&format!("Something went wrong ({})", self.status())))
         }
     }
 }
