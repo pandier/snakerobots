@@ -13,7 +13,7 @@ chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 validator = { version = "0.20", features = ["derive"] }
 
-tropaion = { git = "ssh://git@github.com/MiranCZ/Tropaion.git", rev = "19b3d9a703fabb31bd38b9639af8737d0f0b67e1", optional = true }
+tropaion = { git = "ssh://git@github.com/MiranCZ/Tropaion.git", rev = "b605eec3278e4fa4ae59facc24fb926a87a426ac", optional = true }
 
 [[example]]
 name = "terminal"

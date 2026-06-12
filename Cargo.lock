@@ -3651,7 +3651,7 @@ dependencies = [
 [[package]]
 name = "tropaion"
 version = "0.1.0"
-source = "git+ssh://git@github.com/MiranCZ/Tropaion.git?rev=19b3d9a703fabb31bd38b9639af8737d0f0b67e1#19b3d9a703fabb31bd38b9639af8737d0f0b67e1"
+source = "git+ssh://git@github.com/MiranCZ/Tropaion.git?rev=b605eec3278e4fa4ae59facc24fb926a87a426ac#b605eec3278e4fa4ae59facc24fb926a87a426ac"
 dependencies = [
  "ordermap",
  "strum",

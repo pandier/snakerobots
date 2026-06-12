@@ -13,7 +13,7 @@ pub async fn get_user(app: &AppState, user_id: impl TryInto<Uuid>) -> eyre::Resu
 }
 
 pub async fn get_user_by_username(app: &AppState, username: &str) -> eyre::Result<Option<UserModel>> {
-    Ok(sqlx::query_as("SELECT * FROM users WHERE username = $1")
+    Ok(sqlx::query_as("SELECT * FROM users WHERE LOWER(username) = LOWER($1)")
         .bind(username)
         .fetch_optional(&app.pg)
         .await?)
@@ -45,7 +45,7 @@ pub async fn create_user(app: &AppState, username: String, password: String) -> 
     let hashed_password = service::crypto::hash_password(password)
         .await
         .wrap_err("failed to hash password")?;
-    Ok(sqlx::query_as("INSERT INTO users (username, password) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING RETURNING *")
+    Ok(sqlx::query_as("INSERT INTO users (username, password) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING *")
         .bind(username)
         .bind(hashed_password)
         .fetch_optional(&app.pg)
