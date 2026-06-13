@@ -2,6 +2,7 @@ mod async_runtime;
 mod client;
 mod error;
 mod game;
+mod util;
 
 use godot::prelude::*;
 

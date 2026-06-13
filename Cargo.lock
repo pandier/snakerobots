@@ -2854,6 +2854,7 @@ name = "snakerobots-godot"
 version = "0.1.0"
 dependencies = [
  "arc-swap",
+ "chrono",
  "dotenvy",
  "godot",
  "rand 0.10.0",
