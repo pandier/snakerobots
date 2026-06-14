@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Direction, GameResult, logic::{Game, GameStep, Robot, robot::replay::ReplayRobot, standard::create_standard_game}};
+use crate::{Direction, GameResult, logic::{Game, GameStep, Robot, robot::{error::RobotErrorHandler, replay::ReplayRobot}, standard::create_standard_game}};
 
 pub type DefaultGameReplay = GameReplay<Option<String>>;
 
@@ -22,23 +22,13 @@ pub struct GameReplay<M> {
 
 impl<M> GameReplay<M> {
 
-    pub fn run_standard(
-        robot1: Box<dyn Robot>,
-        metadata1: M,
-        robot2: Box<dyn Robot>,
-        metadata2: M
-    ) -> Self {
-        Self::run_standard_cancellable(robot1, metadata1, robot2, metadata2, &AtomicBool::new(false))
-            .expect("game should never be cancelled")
-    }
-
-    pub fn run_standard_cancellable(
+    pub fn run_standard<E: RobotErrorHandler>(
         robot1: Box<dyn Robot>,
         metadata1: M,
         robot2: Box<dyn Robot>,
         metadata2: M,
         cancelled: &AtomicBool,
-    ) -> Option<Self> {
+    ) -> Result<Option<Self>, E::Error> {
         let mut game = create_standard_game(robot1, Some(robot2), None);
 
         let mut snakes = vec![
@@ -54,10 +44,10 @@ impl<M> GameReplay<M> {
 
         let result = loop {
             if cancelled.load(Ordering::SeqCst) {
-                return None;
+                return Ok(None);
             }
 
-            match game.step_infallible() {
+            match game.step::<E>()? {
                 GameStep::Success { moves, added_apples: _, removed_apples: _ } => {
                     for (i, dir) in moves {
                         if let Some(snake) = snakes.get_mut(i) {
@@ -69,11 +59,11 @@ impl<M> GameReplay<M> {
             }
         };
 
-        Some(Self {
+        Ok(Some(Self {
             seed: game.seed(),
             result,
             snakes,
-        })
+        }))
     }
 
     pub fn winner(&self) -> Option<&SnakeReplay<M>> {

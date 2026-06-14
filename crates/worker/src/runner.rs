@@ -1,6 +1,6 @@
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::{convert::Infallible, sync::{Arc, atomic::{AtomicBool, Ordering}}};
 
-use snakerobots_shared::{dto::GameReplay, logic::robot::lang::{DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST, DEFAULT_STACK_SIZE, LangRobot}};
+use snakerobots_shared::{dto::GameReplay, logic::robot::{error::RobotErrorHandler, lang::{DEFAULT_HEAP_SIZE, DEFAULT_MAX_INSTRUCTION_COST, DEFAULT_STACK_SIZE, LangRobot}}};
 use sqlx::types::Uuid;
 use tokio::{sync::mpsc, time::Instant};
 use tracing::{debug, info, warn};
@@ -39,13 +39,13 @@ fn run_game_blocking(player1: Uuid, code1: String, player2: Uuid, code2: String,
 
     let start = Instant::now();
 
-    let replay = GameReplay::run_standard_cancellable(
+    let replay = GameReplay::run_standard::<TracingRobotErrorHandler>(
         Box::new(robot1),
         player1,
         Box::new(robot2),
         player2,
         cancelled,
-    );
+    ).unwrap_or(None);
 
     if replay.is_some() {
         info!(took = ?start.elapsed(), "finished running game");
@@ -110,5 +110,16 @@ pub struct GameTokenHandle {
 impl GameTokenHandle {
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::SeqCst);
+    }
+}
+
+struct TracingRobotErrorHandler;
+
+impl RobotErrorHandler for TracingRobotErrorHandler {
+    type Error = Infallible;
+
+    fn handle(err: Box<dyn std::error::Error>) -> Result<(), Self::Error> {
+        tracing::warn!("robot error: {}", err);
+        Ok(())
     }
 }
