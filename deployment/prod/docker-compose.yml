@@ -10,6 +10,12 @@ services:
       - db_data:/var/lib/postgresql
     env_file:
       - .env
+  nginx:
+    build:
+      context: ./nginx
+    restart: always
+    ports:
+      - "3000:3000"
   app:
     build:
       context: ../..
@@ -19,8 +25,6 @@ services:
     restart: always
     depends_on:
       - db
-    ports:
-      - "3000:3000"
     environment:
       SESSION_TIMEOUT: 604800
       MATCHMAKER_INTERVAL: 300
