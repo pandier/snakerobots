@@ -6,18 +6,18 @@ COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
-RUN rustup target add x86_64-unknown-linux-musl
+RUN rustup target add aarch64-unknown-linux-musl
 COPY --from=planner /usr/src/app/recipe.json recipe.json
 RUN set RUST_BACKTRACE 1
 RUN --mount=type=ssh cargo chef cook --release \
     --package snakerobots-server \
-    --target x86_64-unknown-linux-musl \
+    --target aarch64-unknown-linux-musl \
     --recipe-path recipe.json
 COPY . .
 RUN --mount=type=ssh cargo build --release \
     --package snakerobots-server \
-    --target x86_64-unknown-linux-musl
+    --target aarch64-unknown-linux-musl
 
 FROM scratch
-COPY --from=builder /usr/src/app/target/x86_64-unknown-linux-musl/release/snakerobots-server /usr/local/bin/
+COPY --from=builder /usr/src/app/target/aarch64-unknown-linux-musl/release/snakerobots-server /usr/local/bin/
 CMD [ "/usr/local/bin/snakerobots-server" ]
