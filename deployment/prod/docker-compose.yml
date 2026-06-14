@@ -25,7 +25,7 @@ services:
       - db
     environment:
       SESSION_TIMEOUT: 604800
-      MATCHMAKER_INTERVAL: 300
+      MATCHMAKER_INTERVAL: 120
       MIGRATE: true
     env_file:
       - .env
