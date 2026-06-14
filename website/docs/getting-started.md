@@ -8,7 +8,7 @@ To start playing, you first need to download the game client.
 
 - [Download the client](/download/snakebots.zip).
 - Extract the game files.
-- Run the `snakerobots.exe` executable.
+- Run the `snakebots.exe` executable.
 
 Make sure you always download the latest version to ensure compatibility with the matchmaking servers.
 

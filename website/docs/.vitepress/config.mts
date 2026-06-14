@@ -42,5 +42,9 @@ export default defineConfig({
     build: {
       assetsInlineLimit: 0,
     }
-  }
+  },
+  head: [
+    ['link', { rel: 'icon', href: '/favicon.ico', sizes: 'any' }],
+    ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
+  ]
 })

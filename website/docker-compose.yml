@@ -8,5 +8,5 @@ services:
     ports:
       - "4000:80"
     volumes:
-      - /srv/snakebots.zip:/usr/share/nginx/html/download/snakebots.zip
+      - /srv/download:/usr/share/nginx/html/download
     restart: unless-stopped
