@@ -42,7 +42,7 @@ struct Game(
 "#;
 
 pub const DEFAULT_STACK_SIZE: usize = 1_000;
-pub const DEFAULT_HEAP_SIZE: usize = 1_000_000;
+pub const DEFAULT_HEAP_SIZE: usize = 10_000_000;
 pub const DEFAULT_MAX_INSTRUCTION_COST: usize = 10_000_000;
 
 pub struct LangRobot {
