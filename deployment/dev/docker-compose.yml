@@ -16,8 +16,6 @@ services:
     build:
       context: ../..
       dockerfile: server.Dockerfile
-      ssh:
-        - default
     restart: always
     depends_on:
       - db
@@ -35,8 +33,6 @@ services:
     build:
       context: ../..
       dockerfile: worker.Dockerfile
-      ssh:
-        - default
     restart: always
     depends_on:
       - db

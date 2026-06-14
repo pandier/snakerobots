@@ -20,8 +20,6 @@ services:
     build:
       context: ../..
       dockerfile: server-arm.Dockerfile
-      ssh:
-        - default
     restart: always
     depends_on:
       - db
@@ -35,8 +33,6 @@ services:
     build:
       context: ../..
       dockerfile: worker-arm.Dockerfile
-      ssh:
-        - default
     restart: always
     depends_on:
       - db

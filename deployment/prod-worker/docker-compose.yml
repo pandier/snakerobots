@@ -19,8 +19,6 @@ services:
     build:
       context: ../..
       dockerfile: worker.Dockerfile
-      ssh:
-        - default
     restart: always
     depends_on:
       - tunnel
