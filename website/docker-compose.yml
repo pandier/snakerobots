@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  vitepress:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:80"
+    volumes:
+      - /srv/snakebots.zip:/usr/share/nginx/html/download/snakebots.zip
+    restart: unless-stopped
