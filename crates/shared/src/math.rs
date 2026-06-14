@@ -94,6 +94,17 @@ impl Direction {
     }
 }
 
+impl std::fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Direction::Up => write!(f, "Up"),
+            Direction::Down => write!(f, "Down"),
+            Direction::Left => write!(f, "Left"),
+            Direction::Right => write!(f, "Right"),
+        }
+    }
+}
+
 #[cfg(feature = "lang")]
 impl crate::lang::util::arg_convertor::ValueLike for Direction {
     fn into_convertable(self) -> crate::lang::util::arg_convertor::ValueConvertable {

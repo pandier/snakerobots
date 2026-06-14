@@ -76,7 +76,7 @@ impl SrLocalGame {
             )
             .map_err(|_| SrLangError::create("invalid game size").to_variant())?;
 
-            let timeline = GameTimeline::evaluate::<PropagatingRobotErrorHandler>(game)
+            let timeline = GameTimeline::evaluate::<PropagatingRobotErrorHandler>(game, vec![Some("player".into()), Some("opponent".into())])
                 .map_err(|err| super::error::convert_error(&code, err).to_variant())?;
 
             Ok(Gd::from_object(timeline))

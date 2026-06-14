@@ -5,8 +5,7 @@ use std::{
 
 use godot::prelude::*;
 use snakerobots_shared::{
-    Point, Size,
-    logic::{Game, GameStep, Snake, robot::error::RobotErrorHandler},
+    Direction, Point, Size, logic::{Game, GameStep, Snake, robot::error::RobotErrorHandler}
 };
 
 #[derive(GodotClass)]
@@ -23,8 +22,8 @@ pub struct GameTimeline {
 #[godot_api]
 impl GameTimeline {
 
-    pub fn evaluate<E: RobotErrorHandler>(mut game: Game) -> Result<GameTimeline, E::Error> {
-        let mut builder = GameTimelineBuilder::new(game.snakes(), game.apples().clone());
+    pub fn evaluate<E: RobotErrorHandler>(mut game: Game, ids: Vec<Option<String>>) -> Result<GameTimeline, E::Error> {
+        let mut builder = GameTimelineBuilder::new(game.snakes(), ids, game.apples().clone());
         loop {
             match game.step::<E>()? {
                 GameStep::Success {
@@ -32,9 +31,9 @@ impl GameTimeline {
                     added_apples,
                     removed_apples,
                 } => {
-                    for (i, _) in moves {
+                    for (i, direction) in moves {
                         if let Some(snake) = game.players().get(i).and_then(|p| p.snake()) {
-                            builder.record_snake(i, snake);
+                            builder.record_snake(i, snake, direction);
                         }
                     }
                     builder.record_apples(added_apples, removed_apples);
@@ -144,6 +143,8 @@ impl GameTimeline {
                         .map(|point| Vector2i::new(point.x, point.y))
                         .collect::<Array<_>>(),
                     snake.is_alive(time),
+                    snake.get_direction(time),
+                    snake.user_id.as_ref().map(|x| x.to_variant()).unwrap_or_else(Variant::nil)
                 )
             })
             .collect::<Array<_>>()
@@ -186,13 +187,23 @@ pub struct GameSnake {
     pub points: Array<Vector2i>,
     #[var]
     pub is_alive: bool,
+    #[var]
+    pub direction: GString,
+    #[var]
+    pub user_id: Variant,
 }
 
 #[godot_api]
 impl GameSnake {
-    #[func]
-    pub fn create(points: Array<Vector2i>, is_alive: bool) -> Gd<Self> {
-        Gd::from_object(GameSnake { points, is_alive })
+    pub fn create(points: Array<Vector2i>, is_alive: bool, direction: Option<Direction>, user_id: Variant) -> Gd<Self> {
+        Gd::from_object(GameSnake {
+            points,
+            is_alive,
+            direction: direction
+                .map(|d| d.to_string().to_godot())
+                .unwrap_or_else(|| "None".to_godot()),
+            user_id,
+        })
     }
 
     #[func]
@@ -205,6 +216,7 @@ impl GameSnake {
 pub struct GameTimelineSnakeStep {
     tail: Option<Point>,
     head: Point,
+    direction: Direction,
 }
 
 #[derive(Debug, Clone)]
@@ -213,6 +225,7 @@ pub struct GameTimelineSnake {
     end: Snake,
     steps: Vec<GameTimelineSnakeStep>,
     current: Snake,
+    user_id: Option<String>,
 }
 
 impl GameTimelineSnake {
@@ -240,6 +253,10 @@ impl GameTimelineSnake {
 
     pub fn goto_end(&mut self) {
         self.current = self.end.clone();
+    }
+
+    pub fn get_direction(&self, time: usize) -> Option<Direction> {
+        self.steps.get(time).map(|step| step.direction)
     }
 
     pub fn is_alive(&self, time: usize) -> bool {
@@ -299,10 +316,11 @@ pub struct GameTimelineBuilder {
 }
 
 impl GameTimelineBuilder {
-    pub fn new(snakes: Vec<&Snake>, apples: HashSet<Point>) -> Self {
+    pub fn new(snakes: Vec<&Snake>, ids: Vec<Option<String>>, apples: HashSet<Point>) -> Self {
         let snakes = snakes
             .into_iter()
-            .map(|snake| GameTimelineSnakeBuilder::new(snake.clone()))
+            .enumerate()
+            .map(|(i, snake)| GameTimelineSnakeBuilder::new(snake.clone(), ids[i].clone()))
             .collect();
         Self {
             snakes,
@@ -312,9 +330,9 @@ impl GameTimelineBuilder {
         }
     }
 
-    pub fn record_snake(&mut self, time: usize, snake: &Snake) {
+    pub fn record_snake(&mut self, time: usize, snake: &Snake, direction: Direction) {
         if let Some(builder) = self.snakes.get_mut(time) {
-            builder.record(snake);
+            builder.record(snake, direction);
         }
     }
 
@@ -348,28 +366,32 @@ pub struct GameTimelineSnakeBuilder {
     start: Snake,
     current: Snake,
     steps: Vec<GameTimelineSnakeStep>,
+    user_id: Option<String>,
 }
 
 impl GameTimelineSnakeBuilder {
-    pub fn new(snake: Snake) -> Self {
+    pub fn new(snake: Snake, user_id: Option<String>) -> Self {
         Self {
             start: snake.clone(),
             current: snake,
             steps: Vec::new(),
+            user_id,
         }
     }
 
-    pub fn record(&mut self, snake: &Snake) {
+    pub fn record(&mut self, snake: &Snake, direction: Direction) {
         let tail: Point = self.current.tail();
         let step = if tail == snake.tail() {
             GameTimelineSnakeStep {
                 tail: None,
                 head: snake.head(),
+                direction,
             }
         } else {
             GameTimelineSnakeStep {
                 head: snake.head(),
                 tail: Some(tail),
+                direction,
             }
         };
         self.steps.push(step);
@@ -382,6 +404,7 @@ impl GameTimelineSnakeBuilder {
             end: self.current,
             steps: self.steps,
             current: self.start,
+            user_id: self.user_id,
         }
     }
 }

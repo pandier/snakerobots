@@ -202,8 +202,8 @@ impl SrMatchReplay {
 
     #[func]
     pub fn create_timeline(&self) -> Gd<GameTimeline> {
-        let game = self.replay.create_game();
-        let timeline = GameTimeline::evaluate::<InfallibleRobotErrorHandler>(game)
+        let (game, ids) = self.replay.create_game();
+        let timeline = GameTimeline::evaluate::<InfallibleRobotErrorHandler>(game, ids)
             .expect("infallible");
         Gd::from_object(timeline)
     }

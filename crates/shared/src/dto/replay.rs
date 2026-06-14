@@ -76,13 +76,16 @@ impl<M> GameReplay<M> {
         })
     }
 
-    pub fn create_game(&self) -> Game {
-        let robot1 = ReplayRobot::new(self.snakes[0].moves.clone());
-        let robot2 = ReplayRobot::new(self.snakes[1].moves.clone());
-        create_standard_game(Box::new(robot1), Some(Box::new(robot2)), Some(self.seed))
-    }
-
     pub fn winner(&self) -> Option<&SnakeReplay<M>> {
         self.result.winner().and_then(|i| self.snakes.get(i))
+    }
+}
+
+impl<M> GameReplay<M> where M: Clone {
+    pub fn create_game(&self) -> (Game, Vec<M>) {
+        let robot1 = ReplayRobot::new(self.snakes[0].moves.clone());
+        let robot2 = ReplayRobot::new(self.snakes[1].moves.clone());
+        let game = create_standard_game(Box::new(robot1), Some(Box::new(robot2)), Some(self.seed));
+        (game, vec![self.snakes[0].metadata.clone(), self.snakes[1].metadata.clone()])
     }
 }
